@@ -90,7 +90,7 @@ Fixpoint expoente (base potencia : nat) : nat :=
    | S p => mult base (expoente base p)
    end.
 
-(* Exercício *) 
+(* Resolução de Exercício *) 
 Fixpoint Fatorial (n : nat) : nat :=
    match n with
    | O => S(O)
@@ -151,28 +151,24 @@ Proof. simpl. reflexivity. Qed.
 
 (* Obs: O símbolo '=' é uma afirmação lógica, uma proposição. Já o símbolo '=?' é uma expressão booleana cujo valor pode ser computado *)
 
-(* Exercício -- ltb = less-than b = menor que b*)
+(* Resolução de Exercício -- ltb = less-than b = menor que b*)
 Definition ltb (n m : nat) : bool :=
-   if n =? m then
-     if n <=? m then
-      true
+   if n <=? m then
+      if n =? m then
+          false
+         else
+          true
       else 
-       false
-    else
-false.
+         false.
+   
 
 Notation "x <? y" := (ltb x y)(at level 70) : nat_scope.
 
 Example teste_ltb1: (ltb 2 2) = false.
-Proof. simp. reflexivity. Qed.
+Proof. simpl. reflexivity. Qed.
 
 Example teste_ltb2: (ltb 2 4) = true.
-Proof. simp. reflexivity. Qed.
+Proof. simpl. reflexivity. Qed.
 
 Example teste_ltb3: (ltb 4 2) = false.
-Proof. simp. reflexivity. Qed.
-
-
-
-
-
+Proof. simpl. reflexivity. Qed.
