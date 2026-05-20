@@ -220,8 +220,3 @@ Proof.
    intros n. destruct n as [|n'] eqn: E.
    - simpl. reflexivity.
    - simpl. reflexivity.   Qed.
-   
- 
-
-
-

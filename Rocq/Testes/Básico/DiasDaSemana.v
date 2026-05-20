@@ -25,5 +25,3 @@ Definition proximo_dia_da_semana (d: dia) : dia := (* o nome da função é prox
 Compute (proximo_dia_da_semana sexta). (* o resultado é ' =segunda : dia' *)
 
 Compute(proximo_dia_da_semana (proximo_dia_da_semana sabado)). (* o resultado é ' =terca : dia' *)
-
-
