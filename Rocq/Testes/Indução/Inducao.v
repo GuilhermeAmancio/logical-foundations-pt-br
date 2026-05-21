@@ -186,3 +186,123 @@ Proof.
    - reflexivity.
    - rewrite add_comutativo. reflexivity.
 Qed.
+
+(* Provas Formais e Informais *)
+(* Prova Formal - pode ser difícil para um humano compreender *)
+Theorem add_associativo' : forall n m p: nat,
+   n + (m + p) = (n + m) + p.
+
+Proof.
+   intros n m p. induction n as [| n' IHn']. reflexivity.
+   simpl. rewrite IHn'. reflexivity.  Qed.
+
+(* Para facilitar o entendimento, comentários e bullets (-) podem ser usados para tornar semelhante a uma prova informal, que será mais facilmente compreendida pelo leitor *)
+Theorem add_associativo'' : forall n m p: nat,
+   n + (m + p) = (n + m) + p.
+
+Proof.
+   intros n m p. induction n as [| n' IHn']. 
+   - (* n = 0 *)
+   reflexivity.
+   - (* n = S n' *)
+   simpl. rewrite IHn'. reflexivity.  Qed.
+
+(* Uma prova poderia ser escrite em linguagem natural como:
+   Teorema: Para qualquer n, m e p.
+        n + (m + p) = (n + m) + p.
+   Prova : Por indução de n.
+   -Primeiro, suponha que n = 0. Devemos provar que
+      0 + (m + p) = (0 + m) + p.
+      Isso segue da definição de + (soma).
+   - Depois, suponha que n = S n', onde
+      n' + (m + p) = (n' + m) + p.
+   Nós devemos mostrar agora que 
+      (S n') + (m + p) = ((S n') + m) + p.
+   Pela definição de +, segue que
+      S(n' + (m + p)) = S((n' + m) + p),
+   que é imediato da hipótese de indução. Qed.
+ *)
+
+ (* Exercício *)
+
+ (* 
+    Prova: Por indução em n e, em cada caso, por indução em m.
+
+    Caso n = 0:
+    Devemos mostrar que 0 + m = m + 0. Fazemos indução em m:
+
+        Se m = 0:
+        Devemos mostrar que 0 + 0 = 0 + 0, o que é imediato por reflexividade.
+
+        Se m = S m', com a hipótese de indução (0 + m' = m' + 0):
+        Devemos mostrar que 0 + (S m') = (S m') + 0.
+        Por simplificação e usando a hipótese de indução de m, a igualdade
+        se mantém, completando o caso n = 0.
+
+    Caso n = S n', com a hipótese de indução (n' + m = m + n'):
+    Devemos mostrar que (S n') + m = m + (S n').
+    Por simplificação e reescrita usando a hipótese de indução de n,
+    junto com o lema mais_n_Sm para ajustar o sucessor, o objetivo
+    é reduzido a uma identidade.
+    Isso encerra todos os casos. Qed.
+    *)
+
+
+Theorem add_rearranjo3 : forall n m p: nat,
+   n + (m + p) = m + (n + p).
+
+Proof.
+    intros n m p.
+    rewrite add_associativo.
+    replace ( n + m) with (m + n).
+    - rewrite add_associativo. reflexivity.
+    - rewrite add_comutativo. reflexivity.
+Qed.
+
+(* Exercício : Agora prove a comutatividade da multiplicação. Você provavelmente vai querer olhar para (ou definir e provar) um teorema "helper" para ser usado nessa prova. Dica: o que é n × (1 + k)?*)
+
+(* Helper 1 *)
+Lemma mul_0_r : forall n : nat,
+  n * 0 = 0.
+
+Proof.
+   intros n.
+   induction n as [| n' IHn'].
+   - simpl. reflexivity.
+   - simpl. rewrite -> IHn'. reflexivity.
+Qed. 
+
+(* Helper 2 *)
+Lemma mul_S_r : forall n k : nat,
+  n * S k = n * k + n.
+
+Proof.
+  intros n k.
+  induction n as [| n' IHn'].
+  - simpl. reflexivity.
+  - simpl. rewrite IHn'. replace (S k + (n' * k + n')) with (k + n' * k + S n').
+  rewrite add_associativo.
+  rewrite mais_n_Sm. 
+  reflexivity.
+
+  rewrite add_associativo.
+  simpl.
+  rewrite mais_n_Sm.
+  reflexivity.
+Qed.
+
+Theorem mul_comutativo: forall m n: nat,
+   m * n = n * m.
+
+Proof.
+   intros m n.
+   induction m as [| m' IHm'].
+   simpl. rewrite mul_0_r. reflexivity.
+   simpl. rewrite mul_S_r. rewrite add_comutativo. rewrite IHm'. reflexivity.
+Qed. 
+
+   
+   
+
+     
+      
