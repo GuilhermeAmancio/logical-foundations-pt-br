@@ -349,3 +349,201 @@ Proof.
    - reflexivity.
    - simpl. rewrite IHn'. reflexivity.
 Qed.
+
+Theorem all3_spec : forall b c : bool,
+   orb
+     (andb b c)
+     (orb (negb b)
+          (negb c))
+   = true.
+
+Proof.
+   intros b c. destruct b.
+   - destruct c.
+   + simpl. reflexivity.
+   +simpl. reflexivity.
+   - destruct c.
+   + simpl. reflexivity.
+   + simpl. reflexivity.
+Qed.
+
+Theorem mult_plus_distr_r : forall n m p: nat,
+   (n + m) * p = (n * p) + (m * p).
+
+Proof.
+   intros n m p. induction n as [| n' IHn'].
+   - simpl. reflexivity.
+   - simpl. rewrite IHn'. rewrite add_associativo. reflexivity.
+Qed.
+
+Theorem mult_assoc : forall n m p : nat,
+   n * (m * p) = (n * m) * p.
+
+Proof.
+   intros n m p. induction n as [| n' IHn'].
+   - simpl. reflexivity.
+   - simpl. rewrite mult_plus_distr_r. rewrite IHn'. reflexivity.
+Qed.
+
+(* Natural para Binário e de volta para Natural *)
+
+(* Retomando o tipo bin *)
+Inductive bin : Type :=
+   | Z 
+   | B0 (n : bin)
+   | B1 (n : bin).
+
+(* Retomando com as definições do módulo Básico *)
+Fixpoint incr (m : bin) : bin :=
+   match m with
+   | Z => B1 Z
+   | B0 x => B1 x
+   | B1 x => B0 (incr x)
+   end.
+
+Fixpoint bin_para_nat (m:bin) : nat :=
+   match m with
+   | Z => 0
+   | B0 x => mult 2 (bin_para_nat x)
+   | B1 x => (mult 2 (bin_para_nat x)) + 1
+   end.
+
+(* Incrementar um número binário e depois converter para natural (unário) é o mesmo que convertê-lo para natural primeiro e depois incrementá-lo *)
+
+Theorem mais_1_l :
+   forall (n : nat), 1 + n = S n. (* Sucessor*)
+Proof.
+   intros n. reflexivity. Qed.
+
+Theorem bin_to_nat_pres_incr : forall b : bin,
+   bin_para_nat (incr b) = 1 + bin_para_nat b.
+
+Proof.
+   intros b. induction b as [| B0 IHB0' | B1' IHB1'].
+   - simpl. reflexivity.
+   - simpl. rewrite add_comutativo. rewrite mais_1_l. reflexivity.
+   - simpl. rewrite IHB1'. rewrite add_0_r. rewrite mais_1_l. rewrite plus_Sn_m. f_equal. rewrite add_0_r. rewrite <- mais_1_l. rewrite <- add_associativo. rewrite (add_comutativo _ 1). reflexivity.
+Qed.
+
+(* Função que converte números naturais para binários *)
+Fixpoint nat_para_bin (n : nat) : bin:=
+   match n with
+   | 0 => Z 
+   | S n' => incr (nat_para_bin n')
+   end.
+
+Theorem nat_bin_nat : forall n,
+   bin_para_nat (nat_para_bin n) = n.
+
+Proof.
+   intros n. induction n as [| n' IHn'].
+   simpl. reflexivity.
+   simpl. rewrite bin_to_nat_pres_incr. rewrite IHn'. rewrite mais_1_l. reflexivity.
+Qed.
+
+(* Converte bin para nat e depois de novo para bin dá problema *)
+Theorem bin_nat_bin_falha : forall b, 
+   nat_para_bin (bin_para_nat b) = b.
+Abort.
+
+(* Como visto, converter binário para natural e de volta para binário dá problema. Uma versão modificada vai ser provada usando os próximos lemas *)
+Lemma  double_incr : forall n : nat,
+   double (S n) = S (S (double n)).
+
+Proof.
+   intros n. induction n as [| n' IHn'].
+   simpl. reflexivity.
+   simpl. rewrite <- IHn'. reflexivity.
+Qed. 
+
+(* Definindo o dobro de um número binário *)
+Definition double_bin (b : bin) : bin :=
+   match b with
+   | Z => Z 
+   | B0 x => B0 (B0 x)
+   | B1 x => B0 (B1 x)
+   end.
+
+Example double_bin_zero : double_bin Z = Z.
+Proof. simpl. reflexivity. Qed.
+
+Lemma double_incr_bin : forall b,
+   double_bin (incr b) = incr (incr (double_bin b)).
+
+Proof.
+   intros b. induction b as [| BO' IHBO' | B1' IHB1'].
+   simpl. reflexivity.
+   simpl. reflexivity.
+   simpl. reflexivity.
+Qed.
+
+(* Voltando par bin_nat_bin_falha, ele falha porque depois de conveter de volta para o binário ele gera um número equivalente à b, mas não é visto como igual pelo Rocq *)
+(* POR QUE O TEOREMA FALHA:
+   
+   O teorema falha porque a representação em binário (`bin`) não é única. 
+   É possível ter múltiplos termos `bin` que representam o mesmo número 
+   natural (devido a "zeros extras", como a diferença entre 5 e 005).
+
+   1. `bin_to_nat` transforma a forma "inflada" (ex: 005) no `nat` único (5).
+   2. `nat_to_bin` reconverte esse `nat` na forma binária limpa/simplificada (5).
+
+   Como o Coq exige igualdade estrutural estrita, o teorema falha porque 
+   a forma simplificada de volta não é idêntica à forma inflada original.
+   Exemplo: `nat_to_bin (bin_to_nat (B0 Z)) = Z`, mas `Z ≠ B0 Z`.
+*)
+
+(* Criando uma função de normalização que seleciona o binário mais simples *)
+Fixpoint normalize (b : bin) : bin :=
+  match b with
+  | Z => Z
+  | B1 m => B1 (normalize m)
+  | B0 m => 
+      match normalize m with
+      | Z => Z  
+      | n => B0 n 
+      end
+  end.
+
+Example teste_normalize_1 : 
+  normalize (B1 (B0 (B1 Z))) = B1 (B0 (B1 Z)).
+
+Proof.
+simpl. reflexivity. Qed.
+
+Example teste_normalize_2 : 
+  normalize (B0 (B0 (B1 Z))) = B0 (B0 (B1 Z)).
+
+Proof.
+simpl. reflexivity. Qed.
+
+Example test_normalize_3 : 
+  normalize (B0 (B0 (B0 Z))) = Z.
+
+Proof.
+simpl. reflexivity. Qed.
+
+(* Agora provando o teorema principal *)
+Theorem bin_nat_bin: forall b, 
+   nat_para_bin (bin_para_nat b) = normalize b.
+   
+Proof.
+   intros b. induction b as [| B0' IHB0'| B1' IHB1'].
+   -simpl. reflexivity.
+   -simpl. rewrite add_0_r. rewrite <- double_mais. assert (H_double : forall n, nat_para_bin (double n) = double_bin (nat_para_bin n)).
+{
+  induction n as [| n' IHn].
+  - simpl. reflexivity.
+  - simpl. rewrite double_incr_bin. rewrite IHn. reflexivity.
+}
+  rewrite H_double. rewrite IHB0'. reflexivity.
+  - simpl. rewrite add_0_r. rewrite <- add_associativo. rewrite <- mais_n_Sm. rewrite add_0_r. rewrite <- mais_n_Sm. rewrite <- double_mais. simpl. assert (H_double : forall n, nat_para_bin (double n) = double_bin (nat_para_bin n)).
+{
+  induction n as [| n' IHn].
+  - simpl. reflexivity.
+  - simpl. rewrite double_incr_bin. rewrite IHn. reflexivity.
+}
+  rewrite H_double. rewrite IHB1'. destruct (normalize B1').
+     + reflexivity.
+     + reflexivity.
+     + reflexivity.
+Qed. 
