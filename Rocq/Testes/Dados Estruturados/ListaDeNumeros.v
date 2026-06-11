@@ -1,3 +1,6 @@
+Require Import Arith.
+Require Import Nat.
+
 Inductive listanatural : Type :=
    | nil (* lista vazia *)
    | cons (n : nat) (l : listanatural). (* lista construída com outros dois tipos de dados - um número natural e outra lista *)
@@ -74,7 +77,7 @@ Proof. reflexivity. Qed.
 Example teste_hd2: hd 0 [] = 0.
 Proof. reflexivity. Qed.
 
-Example teste_hd3: tl [1;2;3] = [2;3].
+Example teste_tl: tl [1;2;3] = [2;3].
 Proof. reflexivity. Qed.
 
 (* Teorema com Listas *)
@@ -89,4 +92,144 @@ Proof.
     intros lst. destruct lst as [| h t].
     - simpl. reflexivity.
     - simpl. reflexivity.
+Qed.
+
+(* Usando induções em teoremas de listas *)
+Theorem juntar_assoc : forall (lst1 lst2 lst3 : listanatural),
+   (lst1 ++ lst2) ++ lst3 = lst1 ++ (lst2 ++ lst3).
+
+Proof.
+   intros lst1 lst2 lst3. induction lst1 as [| h1 t1].
+   reflexivity.
+   simpl. rewrite -> IHt1. reflexivity.
+Qed.
+
+(* Reverte Lista *)
+Fixpoint rev (lst : listanatural) : listanatural :=
+   match lst with
+   | [] => []
+   | h :: t => rev t ++ [h]
+   end.
+
+Example teste_rev1:     rev [1;2;3] = [3;2;1].
+Proof. reflexivity. Qed.
+Example teste_rev2:     rev [] = [].
+Proof. reflexivity. Qed.
+
+(* Tamnho do inverso da lista é o mesmo que o original *)
+Theorem rev_tamanho_primeira_tentativa : forall (lst : listanatural),
+   tamanho (rev lst) = tamanho lst.
+
+Proof.
+   intros lst. induction lst as [| h t].
+   - reflexivity.
+   - simpl. rewrite <- IHt.
+Abort.
+
+(* Temos que provar um lema antes *)
+Theorem juntar_tamanho : forall (lst1 lst2 : listanatural),
+   tamanho (lst1 ++ lst2) = (tamanho lst1) + (tamanho lst2).
+
+Proof.
+   intros lst1 lst2. induction lst1 as [| h1 t1].
+   - reflexivity.
+   - simpl. rewrite IHt1. reflexivity.
+Qed.
+
+(* Agora provando *)
+Theorem rev_tamanho : forall (lst : listanatural),
+   tamanho (rev lst) = tamanho lst.
+
+Proof.
+   intros lst. induction lst as [| h t].
+   - reflexivity.
+   - simpl. rewrite -> juntar_tamanho.
+     simpl. rewrite -> IHt. rewrite Nat.add_comm. (* importado da biblioteca *)
+     reflexivity.
+Qed.
+
+(********************* Options **************************)
+
+(* Função para retornar o n-ésimo elemento de uma lista*)
+Fixpoint enesimo_ruim (lst : listanatural)(n : nat) : nat :=
+   match lst with
+   | [] => 42 (* Valor arbitrário *)
+   | h :: t =>
+       match n with
+       | 0 => h
+       | S k => enesimo_ruim t k
+       end
+   end.
+
+(* Fazendo melhorias *)
+(* A função acima é parcial e  não total, pois tem 
+valores que não produzem saída válida. Para funções 
+parciais, uma solução possível é criar um novo tipo,
+que indica se tem ou não tem um valor como retorno *)
+Inductive natoption : Type :=
+   | Some (n : nat)  (* Se tiver algo para retornar*)
+   | None.           (* Se não tiver nada para retornar*)
+
+Fixpoint enesimo_erro (lst : listanatural) (n : nat) : natoption :=
+   match lst with
+   | [] => None
+   | h :: t =>
+        match n with
+        | 0 => Some h
+        | S k => enesimo_erro t k
+        end
+   end.
+
+Example teste_enesimo_erro1 : enesimo_erro [4;5;6;7] 0 = Some 4.
+Proof. reflexivity. Qed.
+
+Example teste_enesimo_erro2 : enesimo_erro [4;5;6;7] 3 = Some 7.
+Proof. reflexivity. Qed.
+
+Example teste_enesimo_erro3 : enesimo_erro [4;5;6;7] 9 = None.
+Proof. reflexivity. Qed.
+
+(* Um casamento de padrão simultâneo deixa o código mais limpo *)
+Fixpoint enesimo_erro' (lst : listanatural) (n : nat) : natoption :=
+   match lst, n with
+   | [], _ => None
+   | h :: _, 0 => Some h
+   | _ :: t, S k => enesimo_erro' t k
+   end.
+
+Example teste_enesimo_erro1' : enesimo_erro [4;5;6;7] 0 = Some 4.
+Proof. reflexivity. Qed.
+
+Example teste_enesimo_erro2' : enesimo_erro [4;5;6;7] 3 = Some 7.
+Proof. reflexivity. Qed.
+
+Example teste_enesimo_erro3' : enesimo_erro [4;5;6;7] 9 = None.
+Proof. reflexivity. Qed.
+
+(********************** Partial Maps ********************)
+
+(* Semelhante a dicionário *)
+(* Mapas podem ser parciais, porque podem existir chaves que não são mapeadas *)
+
+Inductive partial_map : Type :=
+| Empty
+| Binding (k : nat)(v : nat)(m : partial_map).
+
+(* Fazer um update do binding da chave k para o valor v num mapa existente m *)
+Definition update (k : nat)(v : nat)(m : partial_map) : partial_map :=
+   Binding k v m.
+
+(* Implementando uma função de busca *)
+Fixpoint busca (k : nat)(m : partial_map) : natoption :=
+   match m with 
+   | Empty => None
+   | Binding k2 v m' =>
+       if k =? k2 then Some v else busca k m'
+       end.
+
+Theorem busca_update : forall (m : partial_map)(k v : nat),
+   busca k (update k v m) = Some v.
+
+Proof.
+   intros m k v. simpl. rewrite Nat.eqb_refl. reflexivity.
 Qed.
