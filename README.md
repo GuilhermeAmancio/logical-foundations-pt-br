@@ -11,26 +11,32 @@ explicações mais básicas, mas o ideal é que você possua conhecimentos sobre
 
 ## 📂 Estrutura do Repositório
 
-```
-learning-formal-computation/
+```bash
+├── para-curiosos
+│   └── a_helloworld.v
+├── src
+│   ├── exercicios
+│   │   ├── Básico
+│   │   │   ├── a_portas_logicas.v
+│   │   │   ├── Booleanos.v
+│   │   │   ├── DiasDaSemana.v
+│   │   │   ├── Exercicios.v
+│   │   │   ├── Module.v
+│   │   │   ├── Naturais.v
+│   │   │   ├── Provas.v
+│   │   │   └── Tipos.v
+│   │   ├── Dados Estruturados
+│   │   │   ├── ListaDeNumeros.v
+│   │   │   └── Pares.v
+│   │   ├── Indução
+│   │   │   └── Inducao.v
+│   │   └── Polimorfismo e Funções de Alta Ordem
+│   │       └── Polimorfismo.v
+│   └── linguagens-formais
+│       └── Notas de Aula.pdf
 ├── LICENSE
-├── README.md
-├── para-curiosos/
-│   └── helloworld.v
-└── src/
-    ├── linguagens-formais/
-    │   └── Notas de Aula.pdf
-    ├── rocq-exercicios/
-    │   └── a_portas_logicas.v
-    └── rocq-teoria/
-        ├── 00-tests/
-        │   └── types.v
-        ├── 01-fundamentos/
-        │   ├── a_tipos.v
-        │   ├── b_definicoes.v
-        │   └── c_booleans.v
-        └── 02-funcoes/
-            └── a_recursao.v
+└── README.md
+
 ```
 
 ## 📚 Material de Estudo Principal

@@ -74,9 +74,12 @@ Definition nandb (b1:bool)(b2:bool) : bool :=
  
 Example teste_nandb1: (nandb true false) = true.
 Proof. simpl. reflexivity. Qed.
+
 Example teste_nandb2: (nandb false false) = true.
 Proof. simpl. reflexivity. Qed.
+
 Example teste_nandb3 : (nandb false true) = true.
 Proof. simpl. reflexivity. Qed.
+   
 Example teste_nandb4: (nandb true true) = false.
 Proof. simpl. reflexivity. Qed.
