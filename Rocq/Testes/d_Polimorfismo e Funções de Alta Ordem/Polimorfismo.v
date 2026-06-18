@@ -128,7 +128,7 @@ Fail Definition meu_nil := nil. (* Rocq não vai saber inferir o tipo de nil *)
 (* Podemos dar um argumento explicitamente *)
 Definition meu_nil : lista nat := nil.
 
-(* Ou podemos usar '@' para tornar explícitos argumentos que eram implícitos*)
+(* Ou podemos usar @ para tornar explícitos argumentos que eram implícitos *)
 Check @nil : forall X : Type, lista X.
 
 Definition meu_nil' := @nil nat.
