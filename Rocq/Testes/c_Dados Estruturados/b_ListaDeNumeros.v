@@ -80,6 +80,117 @@ Proof. reflexivity. Qed.
 Example teste_tl: tl [1;2;3] = [2;3].
 Proof. reflexivity. Qed.
 
+(********************* Exercícios ***********************)
+Fixpoint sem_zeros (l:listanatural) : listanatural :=
+   match l with 
+   | [] => []
+   | h :: t =>
+            match h with
+            | 0 => (sem_zeros t)
+            | _ => h :: (sem_zeros t)
+            end
+   end.
+
+Example teste_sem_zeros:
+sem_zeros [0;1;0;2;3;0;0] = [1;2;3].
+
+Proof.
+reflexivity. Qed.
+
+(* Função auxiliar que diz se número é ímpar *)
+Fixpoint e_impar (n : nat) : bool :=
+   match n with
+   | 0 => false
+   | S 0 => true 
+   | S (S n') => e_impar n'
+   end.
+
+ Fixpoint membros_impares (l: listanatural) : listanatural :=
+    match l with
+    | [] => []
+    | h :: t =>
+               match e_impar h with
+               | true => h :: membros_impares t
+               | false => membros_impares t 
+               end
+   end.
+
+Example teste_membros_impares:
+membros_impares [0;1;0;2;3;0;0] = [1;3].
+
+Proof.
+reflexivity. Qed.
+
+Definition contar_numeros_impares (l:listanatural) : nat :=
+   match l with
+   | [] => 0
+   | _ => tamanho (membros_impares l)
+   end.
+
+Example teste_contar_numeros_impares1:
+contar_numeros_impares [1;0;3;1;4;5] = 4.
+
+Proof.
+reflexivity. Qed.
+
+Example teste_contar_numeros_impares2:
+contar_numeros_impares [0;2;4] = 0.
+
+Proof.
+reflexivity. Qed.
+
+Example teste_contar_numeros_impares3:
+contar_numeros_impares nil = 0.
+
+Proof.
+reflexivity. Qed.
+
+(* Lista que é a alternância de duas listas *)
+Fixpoint alternar (l1 l2 : listanatural) : listanatural :=
+   match l1, l2 with 
+   | [] , _ => l2
+   | _ , [] => l1
+   | h1 :: t1 , h2 :: t2 => h1 :: h2 :: (alternar t1 t2)
+   end.
+
+Example teste_alternar1:
+alternar [1;2;3] [4;5;6] = [1;4;2;5;3;6].
+
+Proof.
+reflexivity. Qed.
+
+Example teste_alternar2:
+alternar [1] [4;5;6] = [1;4;5;6].
+
+Proof.
+reflexivity. Qed.
+
+Example teste_alternar3:
+alternar [1;2;3] [4] = [1;4;2;3].
+
+Proof.
+reflexivity. Qed.
+
+Example teste_alternar:
+alternar [] [20;30] = [20;30].
+
+Proof.
+reflexivity. Qed.
+
+
+(* Bags via Listas*)
+(* Um bag (ou multiconjunto) é como um conjunto, exceto 
+que cada elemento pode aparecer múltiplas vezes,
+ao invés de apenas uma *)
+
+(* Uma das maneiras de representar um bag de números 
+é como uma lista *)
+
+Definition bag := listanatural.
+ 
+
+  
+
 (* Teorema com Listas *)
 Theorem nil_juntar : forall (lst : listanatural),
    [] ++ lst = lst.
