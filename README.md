@@ -15,25 +15,25 @@ explicações mais básicas, mas o ideal é que você possua conhecimentos sobre
 ├── para-curiosos
 │   └── a_helloworld.v
 ├── src
-│   ├── exercicios
-│   │   ├── Básico
-│   │   │   ├── a_portas_logicas.v
-│   │   │   ├── Booleanos.v
-│   │   │   ├── DiasDaSemana.v
-│   │   │   ├── Exercicios.v
-│   │   │   ├── Module.v
-│   │   │   ├── Naturais.v
-│   │   │   ├── Provas.v
-│   │   │   └── Tipos.v
-│   │   ├── Dados Estruturados
-│   │   │   ├── ListaDeNumeros.v
-│   │   │   └── Pares.v
-│   │   ├── Indução
-│   │   │   └── Inducao.v
-│   │   └── Polimorfismo e Funções de Alta Ordem
-│   │       └── Polimorfismo.v
-│   └── linguagens-formais
-│       └── Notas de Aula.pdf
+│   ├── a_linguagens_formais
+│   │   └── Notas de Aula.pdf
+│   └── b_atividades
+│       ├── a_Basico
+│       │   ├── a_DiasDaSemana.v
+│       │   ├── b_Booleanos.v
+│       │   ├── c_Tipos.v
+│       │   ├── d_Module.v
+│       │   ├── e_Naturais.v
+│       │   ├── f_Provas.v
+│       │   └── g_Exercicios.v
+│       ├── b_Inducao
+│       │   └── Inducao.v
+│       ├── c_Dados Estruturados
+│       │   ├── ListaDeNumeros.v
+│       │   └── Pares.v
+│       └── d_Polimorfismo e Funcoes de Alta Ordem
+│           └── Polimorfismo.v
+├── .gitignore
 ├── LICENSE
 └── README.md
 
@@ -49,7 +49,7 @@ explicações mais básicas, mas o ideal é que você possua conhecimentos sobre
 > **⚠️ Padrão de nomeação Rocq:**
 > - Nomes de arquivos NÃO podem começar com números
 > - Nomes de arquivos NÃO podem conter hífens
-> - Utilizamos ordem alfabética (`a_`, `b_`, `c_`) para organizar sequência de aprendizado
+> - Utilizamos ordem alfabética (`a_`, `b_`, `c_`) para organizar sequência de aprendizado. Portanto, esse padrão deve ser adotado em arquivos e diretórios.
 
 
 ## 🎯 Objetivos
