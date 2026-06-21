@@ -8,36 +8,7 @@ Repositório colaborativo com explicações teóricas e soluções de exercício
 Este projeto traduz e explica os conceitos do livro em português brasileiro, oferecendo exemplos práticos e exercícios resolvidos para facilitar o aprendizado de teoria da computação e programação funcional. Há também
 explicações mais básicas, mas o ideal é que você possua conhecimentos sobre paradigma funcional e imperativo.
 
-
-## 📂 Estrutura do Repositório
-
-```bash
-├── para-curiosos
-│   └── a_helloworld.v
-├── src
-│   ├── exercicios
-│   │   ├── Básico
-│   │   │   ├── a_portas_logicas.v
-│   │   │   ├── Booleanos.v
-│   │   │   ├── DiasDaSemana.v
-│   │   │   ├── Exercicios.v
-│   │   │   ├── Module.v
-│   │   │   ├── Naturais.v
-│   │   │   ├── Provas.v
-│   │   │   └── Tipos.v
-│   │   ├── Dados Estruturados
-│   │   │   ├── ListaDeNumeros.v
-│   │   │   └── Pares.v
-│   │   ├── Indução
-│   │   │   └── Inducao.v
-│   │   └── Polimorfismo e Funções de Alta Ordem
-│   │       └── Polimorfismo.v
-│   └── linguagens-formais
-│       └── Notas de Aula.pdf
-├── LICENSE
-└── README.md
-
-```
+---
 
 ## 📚 Material de Estudo Principal
 
@@ -49,7 +20,7 @@ explicações mais básicas, mas o ideal é que você possua conhecimentos sobre
 > **⚠️ Padrão de nomeação Rocq:**
 > - Nomes de arquivos NÃO podem começar com números
 > - Nomes de arquivos NÃO podem conter hífens
-> - Utilizamos ordem alfabética (`a_`, `b_`, `c_`) para organizar sequência de aprendizado
+> - Utilizamos ordem alfabética (`a_`, `b_`, `c_`) para organizar sequência de aprendizado. Portanto, esse padrão deve ser adotado em arquivos e diretórios.
 
 
 ## 🎯 Objetivos
@@ -86,56 +57,8 @@ git checkout -b tipo/descricao
 # git checkout -b explicacao/listas
 ```
 
-### 2. Padrão de Nomeação
 
-**Regra Principal:** Sempre siga a ordem alfabética com prefixos
-
-✅ Correto:
-```
-a_tipos.v
-b_definicoes.v
-c_booleans.v
-```
-
-❌ Errado:
-```
-1_tipos.v           (começa com número!)
-tipos-basicos.v     (tem hífen!)
-Tipos.v             (maiúscula no início)
-```
-
-### 3. Estrutura de Arquivo
-
-Todo arquivo `.v` deve seguir este padrão:
-
-```coq
-(* ===================================================================
-   Sua Explicação/Exercício
-   Breve descrição do conteúdo
-   
-   Autor: @seu-usuario
-   Data: YYYY-MM
-=================================================================== *)
-
-(* 📌 CONCEITO PRINCIPAL
-   
-   Explicação do que vamos aprender...
-   
-*)
-
-(* 🧪 EXEMPLO 1 *)
-Definition exemplo : nat := 5.
-
-(* ✅ TESTE *)
-Example teste : exemplo = 5 := rfl.
-
-(* ✏️ EXERCÍCIO *)
-Definition seu_exercicio : nat := 
-  (* TODO: Complete a solução *)
-  admit.
-```
-
-### 4. Checklist Antes de Fazer Push
+### 2. Checklist Antes de Fazer Push
 
 - [ ] Arquivo segue padrão de nomeação (a_, b_, c_)
 - [ ] Arquivo compila sem erros (`rocq seu_arquivo.v`)
@@ -145,30 +68,13 @@ Definition seu_exercicio : nat :=
 - [ ] Sem erros de digitação
 - [ ] README.md atualizado
 
-### 5. Submeter Pull Request
+
+### 3. Submeter Pull Request
 
 Envie seu PR com:
 - Título descritivo: "Explicação: Tipos de Dados" ou "Exercício: Portas Lógicas"
 - Descrição do que foi adicionado/corrigido
 - Referência a issues relacionadas (se houver)
-
-
-### 6. Tipos de Contribuição
-
-**Adicionar novo tópico:**
-- Crie arquivo em pasta apropriada
-- Siga estrutura com exemplos e testes
-- Inclua exercícios com 3 níveis (básico, intermediário, avançado)
-
-**Corrigir erro:**
-- Descreva o erro encontrado
-- Forneça a correção
-- Cite o arquivo afetado
-
-**Melhorar documentação:**
-- Esclareça pontos confusos
-- Adicione exemplos faltantes
-- Atualize referencias
 
 ---
 

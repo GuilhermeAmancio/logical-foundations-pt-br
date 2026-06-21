@@ -9,6 +9,7 @@ Inductive dia : Type := (* registrando uma nova definição para um tipo - dia �
  |sabado
  |domingo. (* Não esquecer do '.' para finalizar, semelhantemente como o ';' faz em várias linguagens*)
 
+ 
 (* Definindo uma função*)
 Definition proximo_dia_da_semana (d: dia) : dia := (* o nome da função é proximo_dia_da_semana- o nome do argumento é 'd' do tipo dia - o retorno é do tipo dia*)
   match d with (* Casamento de padrões - se d for segunda retorna terca, etc*)

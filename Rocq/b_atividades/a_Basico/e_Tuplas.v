@@ -1,24 +1,3 @@
-Inductive rgb: Type :=
-    | vermelho
-    | verde
-    | azul.
-
-
-(* Module - Declaração cria espaço de nomes separados*)
-
-Module ZonaDeExploracao.
-    Definition b: rgb := azul.
-End ZonaDeExploracao.
-
-Definition b : bool := true.
-
-(* Dentro do módulo ZonaDeExploracao b é do tipo rgb, fora é do tipo bool*)
-
-Check ZonaDeExploracao.b : rgb.
-Check b : bool.
-
-(**************************************************************)
-
 (* Tuplas (ou n-uplas)*)
 (* Um construtor com múltiplos parâmetros pode ser usado para criar um tipo tupla*)
 
