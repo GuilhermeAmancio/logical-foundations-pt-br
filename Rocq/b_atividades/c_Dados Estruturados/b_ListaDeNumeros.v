@@ -187,9 +187,170 @@ ao invés de apenas uma *)
 é como uma lista *)
 
 Definition bag := listanatural.
- 
 
+(* Exercícios *)
+
+(* Conta quantas vezes um número 'v' aparece na bag *)
+Fixpoint count (v : nat) (s : bag) : nat :=
+   match s with
+   | [] => 0
+   | h :: t => if v =? h
+               then S (count v t)
+               else count v t
+   end.
+
+Example test_count1: count 1 [1;2;3;1;4;1] = 3.
+Proof.
+reflexivity.   Qed.
+
+Example test_count2: count 6 [1;2;3;1;4;1] = 0.
+Proof. 
+reflexivity. Qed.
+
+(* bag que contem todos os elementos de a e de b *)
+Definition sum : bag -> bag -> bag := juntar.
+
+Example teste_sum1: count 1 (sum [1;2;3] [1;4;1]) = 3.
+Proof.
+reflexivity. Qed.
+
+(* Adicona um valor v como head da bag *)
+Definition add (v : nat) (s : bag) : bag :=
+   match s with
+   | [] => v :: nil
+   | h :: t => v :: s
+   end.
+
+Example teste_add1: count 1 (add 1 [1;4;1]) = 3.
+Proof.
+reflexivity. Qed.
+ 
+Example teste_add2: count 5 (add 1 [1;4;1]) = 0.
+Proof.
+reflexivity. Qed.
+
+(* Se um valor é membro ou não do bag *)
+Fixpoint membro (v : nat) (s : bag) : bool :=
+   match s with 
+   | [] => false
+   | h :: t => if v =? h
+               then true
+               else membro v t     
+   end.
+
+
+Example teste_membro1: membro 1 [1;4;1] = true.
+Proof.
+reflexivity. Qed.
+
+Example teste_membro2: membro 2 [1;4;1] = false.
+Proof.
+reflexivity. Qed.
+
+(* Remove a primeira ocorrência de um número da bag *)
+Fixpoint remove_um (v : nat) (s : bag) : bag :=
+   match s with
+   | [] => []
+   | h :: t =>
+              if v =? h
+              then t
+              else h :: remove_um v t
+   end.
+
+
+Example teste_remove_um1:
+count 5 (remove_um 5 [2;1;5;4;1]) = 0.
+
+Proof.
+reflexivity. Qed.
   
+Example teste_remove_um2:
+count 5 (remove_um 5 [2;1;4;1]) = 0.
+
+Proof.
+reflexivity. Qed.
+ 
+Example teste_remove_um3:
+count 4 (remove_um 5 [2;1;4;5;1;4]) = 2.
+
+Proof.
+reflexivity. Qed.
+ 
+Example teste_remove_um4:
+count 5 (remove_um 5 [2;1;5;4;5;1;4]) = 1.
+
+Proof.
+reflexivity. Qed.
+
+(* Remove todas as ocorrências de um valor na bag *)
+Fixpoint remove_todos (v:nat) (s:bag) : bag :=
+   match s with
+   | [] => []
+   | h :: t =>
+              if v =? h
+              then remove_todos v t
+              else h :: remove_todos v t
+   end.
+
+
+Example teste_remove_todos1: 
+count 5 (remove_todos 5 [2;1;5;4;1]) = 0.
+
+Proof.
+reflexivity. Qed.
+
+Example teste_remove_todos2: 
+count 5 (remove_todos 5 [2;1;4;1]) = 0.
+
+Proof.
+reflexivity. Qed.
+
+Example teste_remove_todos3: 
+count 4 (remove_todos 5 [2;1;4;5;1;4]) = 2.
+
+Proof.
+reflexivity. Qed.
+
+Example teste_remove_todos4: 
+count 5 (remove_todos 5 [2;1;5;4;5;1;4;5;1;4]) = 0.
+
+Proof.
+reflexivity. Qed.
+
+
+Fixpoint incluido (s1 : bag) (s2 : bag) : bool :=
+   match s1 with
+   | [] => true
+   | h1 :: t1 => 
+                if (membro h1 s2) (* se membro h1 s2 for true *)
+                then incluido t1 (remove_um h1 s2)
+                else false
+   end.
+
+Example teste_incluido1: incluido [1;2] [2;1;4;1] = true.
+
+Proof.
+reflexivity. Qed.
+ 
+Example test_incluido2: incluido [1;2;2] [2;1;4;1] = false.
+
+Proof.
+reflexivity. Qed.
+
+
+(*Adicionar um valor a bag deveria incrementar o valor de
+ count em um *)
+
+Theorem add_inc_count : forall (v : nat)(b : bag),
+   tamanho (add v b) = S(tamanho b).
+
+Proof.
+   intros v b.
+   induction b as [| h t IHb].
+   - reflexivity.
+   - reflexivity.
+Qed.
+    
 
 (* Teorema com Listas *)
 Theorem nil_juntar : forall (lst : listanatural),
@@ -258,6 +419,186 @@ Proof.
      simpl. rewrite -> IHt. rewrite Nat.add_comm. (* importado da biblioteca *)
      reflexivity.
 Qed.
+
+(************************* Search ***********************)
+(* Para ajudar a lembrar o nome ou a forma de teorema,
+o Rocq possui o comando 'Search' *)
+Search rev. (* Mostra uma lista de todos os teoremas envolvendo rev *)
+
+Search (_ + _ = _ + _). (* Procura todos os teoremas com essa forma, da biblioteca *)
+
+(* Criação de Module para o próximo exemplo *)
+Module Induction.
+   Theorem ex_search_simples : forall (a b : nat),
+  a + b = a + b.
+Proof.
+  intros a b.
+  reflexivity.
+Qed.
+
+End Induction.
+
+Search (_ + _ = _ + _) inside Induction. (* Pesquisar em um Module particular *)
+
+Search (?x + ?y = ?y + ?x). (* Ao invés de usar o coringa '_', dá para usar variáveis na pesquisa de padrões *)
+
+(********************** Lista de Exercícios - Parte 1 *********************)
+(* Exercício - Listas *)
+Theorem juntar_nil_r : forall l : listanatural,
+  l ++ [] = l.
+
+Proof.
+   intros l. induction l as [| h t IHl].
+   - reflexivity.
+   - simpl. rewrite <- nil_juntar. assert (Haux : t ++ [] = t). {
+      induction t as [| h' t' IHt'].
+      - reflexivity.
+      - rewrite IHl. reflexivity.
+   }
+   rewrite Haux. reflexivity.
+Qed.
+
+Theorem rev_juntar_distr: forall l1 l2 : listanatural,
+  rev (l1 ++ l2) = rev l2 ++ rev l1.
+
+Proof.
+   intros l1 l2.
+   induction l1 as [| h1 t1 IHl1].
+   - simpl. rewrite juntar_nil_r. reflexivity.
+   - simpl. rewrite <- juntar_assoc. rewrite IHl1. reflexivity.
+Qed.
+
+(* Uma involução é uma função que é a sua própia inversa, isso é, aplicando ela duas vezes volta para a entrada original *)
+Theorem rev_involutivo : forall l : listanatural,
+  rev (rev l) = l.
+
+Proof.
+   intros l.
+   induction l as [| h t IHl].
+   - simpl. reflexivity.
+   - simpl. rewrite rev_juntar_distr. simpl. rewrite IHl. reflexivity.
+Qed.
+
+Theorem juntar_assoc4 : forall l1 l2 l3 l4 : listanatural,
+  l1 ++ (l2 ++ (l3 ++ l4)) = ((l1 ++ l2) ++ l3) ++ l4.
+
+Proof.
+   intros l1 l2 l3 l4.
+   induction l1 as [| h1 t1 IHl1].
+   - simpl. rewrite juntar_assoc. reflexivity.
+   - simpl. rewrite <- IHl1. reflexivity.
+Qed.
+
+Lemma sem_zeros_juntar : forall l1 l2 : listanatural,
+  sem_zeros (l1 ++ l2) = (sem_zeros l1) ++ (sem_zeros l2).
+
+Proof.
+   intros l1 l2.
+   induction l1 as [| h1 t1 IHl1].
+   - simpl. reflexivity.
+   - simpl. destruct h1.
+     + rewrite IHl1. reflexivity.
+     + simpl. Set Printing Parentheses. rewrite IHl1. reflexivity.
+Qed. 
+
+(* Exercícios - eqblist *)
+Fixpoint eqblist (l1 l2 : listanatural) : bool :=
+   match l1, l2 with
+   | [] , [] => true
+   | [] , _ => false
+   | _ , [] => false
+   | h1 :: t1 , h2 :: t2 =>
+                           if eqb h1 h2
+                           then eqblist t1 t2
+                           else false
+  end.
+
+
+Example teste_eqblist1 : (eqblist nil nil = true).
+Proof.
+reflexivity. Qed.
+
+Example teste_eqblist2 : eqblist [1;2;3] [1;2;3] = true.
+Proof.
+reflexivity. Qed.
+
+Example teste_eqblist3 : eqblist [1;2;3] [1;2;4] = false.
+Proof.
+reflexivity. Qed.
+
+(* Lema Auxiliar *)
+Lemma eqb_refl : forall n : nat, eqb n n = true.
+Proof.
+  induction n as [| n' IHn].
+  - simpl. reflexivity.
+  - simpl. rewrite IHn. reflexivity.
+Qed.
+
+Theorem eqblist_refl : forall l: listanatural,
+  true = eqblist l l.
+Proof.
+ intros l. induction l as [| h t IHl].
+ - reflexivity.
+ - simpl. rewrite eqb_refl. rewrite <- IHl. reflexivity.
+Qed.
+
+
+(****************************** Lista de Exercícios - Parte 2 *****************************)
+(* Teoremas sobre bags *)
+Theorem count_membro_nonzero : forall (s : bag),
+  1 <=? (count 1 (1 :: s)) = true.
+
+Proof.
+   intros s.
+   reflexivity. Qed.
+
+(* O seguinte lema sobre leb pode ser útil no próximo exercício (e nos próximos capítulos) *)
+Theorem leb_n_Sn : forall n,
+  n <=? (S n) = true.
+Proof.
+  intros n. induction n as [| n' IHn'].
+  - (* 0 *)
+    simpl. reflexivity.
+  - (* S n' *)
+    simpl. rewrite IHn'. reflexivity. Qed.
+
+(* Exercício - 3 estrelas *)
+
+(* Lema Auxiliar *)
+Lemma le_succ_diag_r : forall n : nat,
+  (n <=? S n) = true.
+Proof.
+  induction n as [| n' IHn].
+  - simpl. reflexivity.
+  - simpl. rewrite IHn. reflexivity.
+Qed.
+
+Theorem remove_nao_incrementa_count : forall (s : bag),
+  (count 0 (remove_um 0 s)) <=? (count 0 s) = true.
+
+Proof.
+  intros s. induction s as [| h t IHs'].
+  - reflexivity.
+  - simpl. destruct h.
+    +  simpl. rewrite le_succ_diag_r. reflexivity.
+    + simpl. rewrite IHs'. reflexivity.
+Qed.
+
+(* Prove que toda involução é injetiva *)
+Theorem involucao_injetiva : forall (f : nat -> nat),
+    (forall n : nat, n = f (f n)) -> (forall n1 n2 : nat, f n1 = f n2 -> n1 = n2).
+
+Proof.
+   intros f Hinv n1 n2 Heq.
+   rewrite (Hinv n1).
+   rewrite Heq.
+   rewrite <- (Hinv n2).
+   reflexivity.
+Qed.
+
+ 
+ 
+
 
 (********************* Options **************************)
 
