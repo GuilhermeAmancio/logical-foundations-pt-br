@@ -157,3 +157,69 @@ Proof.
    - simpl. rewrite IHt1. reflexivity.
 Qed.
 
+(* Pares Polimórficos *)
+(* Semelhantemente a como definimos listas *)
+
+Inductive prod ( X Y : Type) : Type :=
+   | par (x : X)(y : Y).
+
+(* Tornando implícito *)
+Arguments par {X} {Y}.
+
+Notation "( x , y )" := (par x y).
+
+Notation "X * Y" := (prod X Y) : type_scope. (* type_scope serve para dizer que nesse escopo * significa produto cartesiano*)
+
+(* Agora podemos escrever funções com pares *)
+Definition primeiro {X Y : Type}{p : X * Y} : X :=
+   match p with
+   | (x , y) => x 
+   end.
+
+Definition segundo {X Y : Type}{p : X * Y} : Y :=
+   match p with
+   | (x , y) => y
+   end.
+
+(* Função que combina duas listas como pares *)
+Fixpoint combine {X Y : Type} (lx: lista X) (ly : lista Y) : lista (X * Y) :=
+   match lx, ly with
+   | [], _ => []
+   | _, [] => []
+   | x :: tx, y :: ty => (x, y) :: (combine tx ty)
+   end.
+
+Example combine_ex : combine [1;2] [3;4] = [(1,3); (2,4)].
+
+Proof.
+   reflexivity. Qed.
+
+(* Options Polimórficos *)
+
+Module OptionPlayground.
+
+Inductive option ( X : Type) : Type :=
+   | Some (x : X)
+   | None.
+
+Arguments Some {X}.
+Arguments None {X}.
+
+End OptionPlayground.
+
+(* Função que nos dá o enésimo elemento de uma lista de um tipo qualquer *)
+Fixpoint enesimo_erro {X : Type}(l : lista X)(n : nat) : option X :=
+   match l with 
+   | [] => None
+   | a :: l' => match n with   
+                   | O => Some a
+                   | S n' => enesimo_erro l' n'
+                   end
+   end.
+
+Example teste_enesimo_erro1 : enesimo_erro [4;5;6;7] 0 = Some 4.
+Proof. reflexivity. Qed.
+Example teste_enesimo_erro2 : enesimo_erro [[1];[2]] 1 = Some [2].
+Proof. reflexivity. Qed.
+Example teste_enesimo_erro3 : enesimo_erro [true] 2 = None.
+Proof. reflexivity. Qed.
