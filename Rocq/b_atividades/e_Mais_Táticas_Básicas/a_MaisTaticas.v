@@ -218,3 +218,101 @@ Proof.
   { reflexivity. }
   rewrite H2. rewrite H1. simpl. reflexivity.
 Qed.
+
+(* A tática assert do Rocq, usada acima, adiciona a hipótese fornecida ao 
+contexto, mas primeiro exige que você prove a hipótese como um novo objetivo.
+
+Essa técnica para injetividade pode ser generalizada para qualquer 
+construtor escrevendo o equivalente a pred -- ou seja, escrevendo uma função 
+que ''desfaz'' uma aplicação do construtor. *)
+
+Theorem S_injective' : forall (n m : nat),
+  S n = S m ->
+  n = m.
+  
+Proof.
+  intros n m H.
+
+(* Ao escrever injection H as Hmn neste ponto, estamos pedindo ao Rocq que 
+gere todas as equações que ele pode inferir de H usando a injetividade dos 
+construtores (no presente exemplo, a equação n = m). Cada uma dessas 
+equações é adicionada como uma hipótese (chamada de Hmn neste caso) ao 
+contexto. *)
+
+  injection H as Hnm. apply Hnm.
+Qed.
+
+(* Aqui está um exemplo mais interessante que mostra como 'injection' pode
+derivar múltiplas equações de uma vez *)
+
+Theorem injection_ex1 : forall (n m o : nat),
+  [n;m] = [o;o] ->
+  n = m.
+
+Proof.
+  intros n m o H.
+  injection H as H1 H2.
+  rewrite H1. rewrite H2. reflexivity.
+Qed.
+
+(* Exercício *)
+Example injection_ex3 : forall (X : Type) (x y z : X) (l j : list X),
+  x :: y :: l = z :: j ->
+  j = z :: l ->
+  x = y.
+
+Proof.
+  intros X x y z l j eq1 eq2.
+  injection eq1 as H1 H2.
+  rewrite H1.  rewrite eq2 in H2. 
+  injection H2.
+  symmetry.
+  apply H.
+Qed.
+
+(* Chega de injetividade de construtores. E quanto à disjunção?
+
+O princípio da disjunção diz que dois termos que começam com construtores 
+diferentes (como O e S, ou true e false) nunca podem ser iguais. Isso 
+significa que, sempre que nos encontrarmos em um contexto onde assumimos 
+que dois termos desse tipo são iguais, estamos justificados em concluir 
+qualquer coisa que quisermos, já que a premissa é sem sentido.
+
+A tática discriminate incorpora esse princípio: ela é usada em uma hipótese 
+que envolve uma igualdade entre construtores diferentes (por exemplo, 
+false = true), e resolve o objetivo atual imediatamente. Alguns exemplos: *)
+Theorem discriminate_ex1 : forall (n m : nat),
+  false = true ->
+  n = m.
+
+Proof.
+  intros n m contra. discriminate contra. Qed.
+
+Theorem discriminate_ex2 : forall (n : nat),
+  S n = O ->
+  2 + 2 = 5.
+
+Proof.
+  intros n contra. discriminate contra. Qed.
+
+(* Estes exemplos são instâncias de um princípio lógico conhecido como o 
+princípio da explosão, o que afirma que uma hipótese contraditória implica 
+qualquer coisa (mesmo coisas manifestamente falsas!).
+
+Se você achar o princípio da explosão confuso, lembre-se de que essas provas 
+não estão mostrando que a conclusão da afirmação é verdadeira. Em vez disso, 
+elas estão mostrando que, se a situação sem sentido descrita pela premissa 
+de alguma forma ocorresse, então a conclusão sem sentido também ocorreria -- 
+porque estaríamos vivendo em um universo inconsistente onde toda declaração
+é verdadeira.
+
+Exploraremos o princípio de explosão com mais detalhes no próximo capítulo. *)
+
+(* Exercício *)
+Example discriminate_ex3 : forall (X : Type) (x y z : X) (l j : list X),
+    x :: y :: l = [] ->
+    x = z.
+
+Proof.
+  intros X x y z l j H.
+  discriminate H.
