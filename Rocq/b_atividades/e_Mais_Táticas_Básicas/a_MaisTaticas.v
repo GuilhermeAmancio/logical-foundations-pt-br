@@ -745,10 +745,10 @@ Theorem double_injetivo_tentativa2 : forall n m,
 
 Proof.
   intros n m.
-  (* n and m are both in the context *)
+  (* n e m estão ambos no contexto *)
   generalize dependent n.
-  (* Now n is back in the goal and we can do induction on
-     m and get a sufficiently general IH. *)
+  (* Agora n está novamente no goal e nós podemos fazer indução em
+     m e conseguir uma IH suficientemente geral. *)
   induction m as [| m' IHm'].
   - (* m = O *) simpl. intros n eq. destruct n as [| n'] eqn:E.
     + (* n = O *) reflexivity.
@@ -758,4 +758,107 @@ Proof.
     + (* n = S n' *) f_equal.
       apply IHm'. injection eq as goal. apply goal. Qed.
 
+(* Vamos ver uma prova informal deste teorema. 
+Note que a proposição que provamos por indução deixa n quantificado, o que 
+corresponde ao uso de generalize dependent em nossa prova formal.
+
+Teorema: Para quaisquer números naturais n e m, se double n = double m, 
+então n = m.
+
+Prova: Seja m um número natural. Provamos por indução em m que, para qualquer 
+n, se double n = double m, então n = m.
+
+-Primeiro, suponha m = 0, e suponha que n seja um número tal que double n = 
+double m. Devemos mostrar que n = 0.
+Como m = 0, pela definição de double, temos double n = 0. Há dois casos a 
+considerar para n. Se n = 0, terminamos, já que m = 0 = n, conforme exigido. 
+Caso contrário, se n = S n' para algum n', chegamos a uma contradição: pela 
+definição de double, podemos calcular double n = S (S (double n')), mas isso 
+contradiz a suposição de que double n = 0.
+
+-Segundo, suponha m = S m' e que n seja novamente um número tal que double n 
+= double m. Devemos mostrar que n = S m', com a hipótese de indução de que 
+para todo número s, se double s = double m', então s = m'.Pelo fato de que 
+m = S m' e pela definição de double, temos double n = S (S (double m')). Há 
+dois casos a considerar para n.Se n = 0, então por definição double n = 0, o 
+que é uma contradição.Portanto, podemos assumir que n = S n' para algum n', 
+e novamente pela definição de double temos S (S (double n')) = S (S (double 
+m')), o que implica por injetividade que double n' = double m'. Instanciar 
+a hipótese de indução com n' nos permite, portanto, concluir que n' = m', e 
+segue-se imediatamente que S n' = S m'. Como S n' = n e S m' = m, isso é 
+exatamente o que queríamos mostrar. ☐ *)
+
+
+(**************** Reescrita com declarações condicionais *******************)
+
+(* Suponha que queiramos mostrar que a adição é a inversa da subtração. Como 
+estamos trabalhando com números naturais, precisamos de uma premissa para 
+evitar que a subtração trunque seu resultado. Com essa premissa, a hipótese 
+de indução se torna ∀ m, n' <=? m = true → (m - n') + n' = m. O início da 
+prova usa técnicas que já vimos — em particular, note como fazemos indução 
+em n antes de introduzir m, de modo que a hipótese de indução se torne 
+suficientemente geral. *)
+
+(* Auxiliares *)
+Notation "x <=? y" := (Nat.leb x y) (at level 70) : nat_scope.
+Theorem add_0_r : forall n:nat, n + 0 = n.
+Proof.
+  intros n. induction n as [| n' IHn'].
+  - (* n = 0 *) reflexivity.
+  - (* n = S n' *) simpl. rewrite -> IHn'. reflexivity. Qed.
+
+(* Lema que queremos demostrar *)
+Lemma sub_add_leb : forall n m, n <=? m = true -> (m - n) + n = m.
+Proof.
+  intros n.
+  induction n as [| n' IHn'].
+  - (* n = 0 *)
+    intros m H. rewrite add_0_r. destruct m as [| m'].
+    + (* m = 0 *)
+      reflexivity.
+    + (* m = S m' *)
+      reflexivity.
+  - (* n = S n' *)
+    intros m H. destruct m as [| m'].
+    + (* m = 0 *)
+      discriminate.
+    + (* m = S m' *)
+      simpl in H. simpl. rewrite <- mais_n_Sm.
+
+(* Neste ponto, precisamos mostrar S ((m' - n') + n') = S m' a partir da 
+premissa (n' ≤ m') = true.  Poderíamos usar a tática assert para provar 
+(m' - n') + n' = m' a partir da hipótese de indução. No entanto, também 
+podemos apenas usar o rewrite diretamente: se fizermos uma reescrita com uma 
+declaração condicional da forma P → a = b, o Rocq tentará reescrever com a = 
+b e, em seguida, pedirá que provemos P em um novo subobjetivo. 
+Se a declaração tiver mais de uma premissa, obteremos um subobjetivo para 
+cada premissa. *)
+
+   rewrite IHn'.
+      ++ reflexivity.
+      ++ apply H.
+Qed.
+
+(* Exercício *)
+(* Prove isso por indução em l *)
+Theorem enesimo_erro_apos_ultimo: forall (n : nat) (X : Type) (l : list X),
+  length l = n ->
+  nth_error l n = None.
+
+Proof.
+  intros n.
+  induction n as [| n' IHn'].
+  - intros X l H. destruct l as [| l'].
+    + reflexivity.
+    + simpl. discriminate.
+  -  intros X l H. destruct l as [| l'].
+    + simpl. discriminate.
+    + simpl. 
+    rewrite IHn'.
+      ++ reflexivity.
+      ++ simpl in H. injection H as H'. apply H'.
+Qed.
+         
+
+(*************************** Expandindo Definições ************************)
   
