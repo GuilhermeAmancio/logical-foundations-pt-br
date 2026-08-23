@@ -1029,7 +1029,7 @@ Fixpoint combine {X Y : Type} (lx : list X) (ly : list Y)
   end. 
 
 (* Prove que fatia e combine são inversos no seguinte sentido: *)
-Theorem combine_split : forall X Y (l : list (X * Y)) l1 l2,
+Theorem combine_fatia : forall X Y (l : list (X * Y)) l1 l2,
   fatia l = (l1, l2) ->
   combine l1 l2 = l.
 
@@ -1123,3 +1123,203 @@ Theorem bool_fn_aplicada_tres_vezes :
   f (f (f b)) = f b.
 
 Proof.
+  intros f b. 
+  destruct b.
+  destruct (f true) eqn:E1.
+  - rewrite E1. rewrite E1. reflexivity.
+  - destruct (f false) eqn:E2.
+    + apply E1.
+    + apply E2.
+  - destruct (f false) eqn:E3.
+    + destruct (f true) eqn:E4.
+      ++ apply E4.
+      ++ apply E3.
+    + rewrite E3. apply E3. 
+Qed.
+  
+(********************************** Revisão *******************************)
+(* Já falamos sobre muitas das táticas mais fundamentais do Rocq. 
+Vamos introduzir mais algumas nos próximos capítulos e, mais adiante, 
+veremos algumas táticas de automação mais poderosas que fazem com que o 
+Rocq nos ajude com detalhes de baixo nível. Mas, basicamente, já temos o 
+que precisamos para realizar o trabalho. Aqui estão as que já vimos:
+
+- intros: move hipóteses/variáveis da meta para o contexto.
+- reflexivity: finaliza a prova (quando a meta se parece com e = e).
+- apply: prova a meta usando uma hipótese, lema ou construtor.
+- apply... in H: aplica uma hipótese, lema ou construtor a uma hipótese no 
+contexto (raciocínio para a frente).
+- apply... with...: especifica explicitamente valores para variáveis que 
+não podem ser determinados por casamento de padrão (pattern matching).
+- specialize (H ...): refinaria uma hipótese fixando algumas de suas 
+variáveis.
+- simpl: simplifica computações na meta.
+- simpl in H: ... ou em uma hipótese.
+- rewrite: usa uma hipótese de igualdade (ou lema) para reescrever a meta.
+- rewrite ... in H: ... ou em uma hipótese.
+- symmetry: altera uma meta da forma t = u para u = t.
+- symmetry in H: altera uma hipótese da forma t = u para u = t.
+- transitivity y: prova uma meta x = z provando duas novas submetas: x = y 
+e y = z.
+- unfold: substitui uma constante definida pelo seu lado direito na meta.
+- unfold... in H: ... ou em uma hipótese.
+- destruct... as...: análise de casos sobre valores de tipos definidos 
+indutivamente.
+- destruct... eqn:...: especifica o nome de uma equação a ser adicionada 
+ao contexto, registrando o resultado da análise de casos.
+- induction... as...: indução sobre valores de tipos definidos 
+indutivamente.
+- injection... as...: raciocina por injetividade em igualdades entre 
+valores de tipos definidos indutivamente.
+- discriminate: raciocina pela disjunção de construtores em igualdades 
+entre valores de tipos definidos indutivamente.
+- replace x with y: substitui x por y em todos os lugares da meta atual, 
+criando uma submeta de que x = y.
+- assert (H: e) (ou assert (e) as H): introduz um lema local 'e' e o chama 
+de H.
+- generalize dependent x: move a variável x (e qualquer outra coisa que 
+dependa dela) do contexto de volta para uma hipótese explícita na fórmula 
+da meta.
+- f_equal: transforma uma meta da forma f x = f y em x = y. *)
+
+(************************* Exercícios Adicionais **************************)
+Theorem eqb_sym : forall (n m : nat),
+  (n =? m) = (m =? n).
+
+Proof.
+  intros n m.
+  destruct n.
+  - reflexivity.
+  - reflexivity.
+Qed.
+
+(* Dê uma prova informal deste lema que corresponda à sua prova formal 
+acima:
+
+Teorema: Para quaisquer naturais n m, (n =? m) = (m =? n).
+
+Prova: 
+
+Fazemo análise de casos em n.
+Caso 1 (n = 0): Queremos provar que (0 =? m) = 
+(m =? 0). Como o Rocq avalia computacionalmente a função de igualdade 
+estrutural com base nos argumentos, ao substituir n por 0, a expressão se 
+simplifica diretamente para uma identidade booleana (false = false), que é 
+trivialmente verdadeira por reflexividade.
+Caso 2 (n = S n'): Queremos provar que (S n' =? m) = (m =? S n'). Da mesma 
+forma, substituindo o construtor do sucessor e avaliando a função de 
+comparação em ambos os lados, a equação se reduz a uma igualdade de valores 
+booleanos idênticos (false = false), sendo imediatamente resolvida. 
+Portanto, em ambos os casos, a igualdade é válida. *)
+
+(* Exercício *)
+Theorem eqb_trans : forall (n m p : nat),
+  n =? m = true ->
+  m =? p = true ->
+  n =? p = true.
+
+Proof.
+  intros n m p H1 H2.
+  induction n as [| n' IHn'].
+  - discriminate H1.
+  - discriminate H1.
+Qed.
+  
+(* Exercício *)
+Theorem filter_exercicio : forall (X : Type) (test : X -> bool)
+                                 (x : X) (l lf : list X),
+  filter test l = x :: lf ->
+  test x = true.
+
+Proof.
+  intros X test x l lf H.
+  unfold filter in H.
+  induction l as [| h t IHl].
+  - discriminate H.
+  - destruct (test h) eqn:E.
+    + injection H as H1 H2. rewrite H1 in E. apply E.
+    + apply IHl in H. apply H.
+Qed.
+
+(* Defina dois Fixpoints recursivos, paratodob e existeb. O primeiro 
+verifica se cada elemento em uma lista satisfaz um dado predicado:
+
+    paratodob impar [1;3;5;7;9] = true
+
+    paratodob negb [false;false] = true
+
+    paratodob par [0;2;4;5] = false
+
+    paratodob (eqb 5) [] = true
+
+O segundo verifica se existe algum elemento na lista que satisfaz um dado 
+predicado:
+
+    existeb (eqb 5) [0;2;3;6] = false
+
+    existeb (andb true) [true;true;false] = true
+
+    existeb impar [1;0;0;0;0;3] = true
+
+    existeb par [] = false
+
+Em seguida, defina uma versão não recursiva de existsb — chame-a de 
+existeb' — usando paratodob e negb.
+
+Por fim, prove um teorema existeb_existeb' afirmando que existeb' e existeb 
+têm o mesmo comportamento. *)
+
+Fixpoint paratodob {X : Type}(teste: X -> bool)(l : list X) : bool :=
+   match l with
+   | [] => true
+   | h :: t => andb (teste h) (paratodob teste t)
+   end.
+
+Example teste_paratodob_1 : paratodob Nat.odd [1;3;5;7;9] = true.
+Proof. 
+reflexivity. Qed.
+
+Example teste_paratodob_2 : paratodob negb [false;false] = true.
+Proof.
+reflexivity. Qed.
+
+Example teste_paratodob_3 : paratodob Nat.even [0;2;4;5] = false.
+Proof.
+reflexivity. Qed.
+
+Fixpoint existeb {X : Type}(teste : X -> bool)(l : list X) : bool :=
+   match l with
+   | [] => false
+   | h :: t => orb (teste h) (existeb teste t)
+   end.
+
+Example teste_existeb_1 : existeb (Nat.eqb 5) [0;2;3;6] = false.
+Proof.
+reflexivity. Qed.
+
+Example test_existeb_2 : existeb (andb true) [true;true;false] = true.
+Proof.
+reflexivity. Qed.
+
+Example teste_existeb_3 : existeb Nat.odd [1;0;0;0;0;3] = true.
+Proof.
+reflexivity. Qed.
+
+Example teste_existeb_4 : existeb Nat.even [] = false.
+Proof.
+reflexivity. Qed.
+
+Definition existeb' {X : Type} (teste : X -> bool) (l : list X) : bool :=
+  negb (paratodob (fun x => negb (teste x)) l).
+
+Theorem existeb_existeb' : forall (X : Type) (teste : X -> bool) (l : list X),
+  existeb teste l = existeb' teste l.
+
+Proof.
+  intros X teste l.
+  induction l as [| h t IHl].
+  - reflexivity.
+  - simpl. rewrite IHl. destruct (teste h) eqn:E.
+    + simpl. unfold existeb'. simpl. rewrite E. reflexivity.
+    + simpl. unfold existeb'. simpl. rewrite E. reflexivity.
+Qed.
