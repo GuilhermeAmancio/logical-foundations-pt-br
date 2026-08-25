@@ -154,7 +154,7 @@ Lemma e_exemplo2 :
   forall n m : nat, n = 0 /\ m = 0 -> n + m = 0.
 
 Proof.
-  (* TRABALHADO EM SALA *)
+  (* TRABALHADO EM AULA *)
   intros n m H.
   destruct H as [Hn Hm].
   rewrite Hn. rewrite Hm.
@@ -259,3 +259,71 @@ proposições como argumentos e produz uma proposição. *)
 Check and : Prop -> Prop -> Prop.
   
 (******************************** Disjunção *******************************)
+
+(* Outro conectivo importante é a disjunção, ou o ou lógico, de duas 
+proposições: A ∨ B é verdadeiro quando pelo menos A ou B for verdadeiro. 
+Essa notação infixa representa or A B, onde or : Prop -> Prop -> Prop.
+Para usar uma hipótese disjuntiva em uma prova, procedemos por análise de 
+casos — a qual, assim como com outros tipos de dados como nat, pode ser 
+feita explicitamente com destruct ou implicitamente com um padrão de intros: *)
+Notation "A \/ B" := (or A B) : type_scope.
+
+Lemma fator_e_O:
+  forall n m : nat, n = 0 \/  m = 0 -> n * m = 0.
+
+Proof.
+  (* Esse padrão de intros implicitamente faz análise de casos em
+     n = 0 ∨ m = 0... *)
+  intros n m [Hn | Hm].
+  - (* Aqui, n = 0 *)
+    rewrite Hn. reflexivity.
+  - (* Aqui, m = 0 *)
+    rewrite Hm. rewrite <- mult_n_O.
+    reflexivity.
+Qed.
+
+(* Podemos ver neste exemplo que, quando realizamos uma análise de casos em 
+uma disjunção A ∨ B, devemos cumprir separadamente duas obrigações de prova, 
+cada uma mostrando que a conclusão é válida sob uma premissa diferente — A 
+no primeiro subobjetivo e B no segundo.
+
+O padrão de análise de casos [Hn | Hm] permite-nos nomear as hipóteses que 
+são geradas para os subobjetivos.
+
+Por outro lado, para mostrar que uma disjunção é verdadeira, basta 
+demonstrar que um dos seus lados é válido. Isso pode ser feito por meio das 
+táticas 'left' e 'right'. Como os próprios nomes indicam, a primeira exige 
+provar o lado esquerdo da disjunção, enquanto a segunda exige provar o lado 
+direito. Aqui está um uso trivial... *)
+
+Lemma ou_intro_l : forall A B : Prop, A -> A \/ B.
+
+Proof.
+  intros A B HA.
+  left.
+  apply HA.
+Qed.
+
+(* ... e aqui está um exemplo um pouco mais interessante que exige tanto o 
+left quanto o right: *)
+Lemma zero_or_succ :
+  forall n : nat, n = 0 \/ n = S (pred n).
+
+Proof.
+  (* TRABALHADO EM AULA *)
+  intros [|n'].
+  - left. reflexivity.
+  - right. reflexivity.
+Qed.
+
+(* Exercício *)
+Lemma mult_e_O :
+  forall n m, n * m = 0 -> n = 0 \/ m = 0.
+
+Proof.
+  intros [| n'].
+  - left. reflexivity.
+  - right. destruct m.
+    + reflexivity.
+    + discriminate H.
+Qed.
