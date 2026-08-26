@@ -327,3 +327,54 @@ Proof.
     + reflexivity.
     + discriminate H.
 Qed.
+
+Theorem ou_comut : forall P Q : Prop,
+  P \/ Q -> Q \/ P.
+
+Proof.
+  intros P Q [HP | HQ].
+  right. apply HP.
+  left. apply HQ.
+Qed.
+
+(*************************** Falsidade e Negação **************************)
+
+(* Até este ponto, estivemos principalmente preocupados em provar afirmações 
+''positivas'' — a adição é comutativa, a concatenação de listas é 
+associativa, etc. Às vezes, também nos interessamos por resultados 
+negativos, demonstrando que determinada proposição não é verdadeira. Tais 
+afirmações são expressas com o operador de negação lógica ¬. Para ver como a 
+negação funciona, lembre-se do princípio da explosão do capítulo de Táticas, 
+o qual afirma que, se assumirmos uma contradição, qualquer outra proposição 
+poderá ser derivada.Seguindo essa intuição, poderíamos definir ¬ P (''não P'') 
+como  ∀ Q, P → Q. Na verdade, o Rocq faz uma escolha equivalente, mas 
+ligeiramente diferente, definindo ¬ P como P → False, onde False é uma 
+proposição específica não provável definida na biblioteca padrão. *)
+ 
+Definition negacao (P: Prop) := P -> False.
+
+Check negacao : Prop -> Prop.
+
+Notation "~ x" := (negacao x) : type_scope.
+
+(* Como False é uma proposição contraditória, o princípio da explosão 
+também se aplica a ela. Se conseguirmos inserir False no contexto, 
+poderemos usar destruct nele para completar qualquer objetivo: *)
+
+Theorem ex_falso_quodlibet : forall (P:Prop),
+  False -> P.
+
+Proof.
+  intros P contra.
+  destruct contra. Qed.
+
+(* A expressão em latim ex falso quodlibet significa, literalmente, 
+''da falsidade segue-se o que você quiser''; este é outro nome comum para o 
+princípio da explosão. *)
+
+(* Exercício *)
+(* Mostre que a definição de negação do Rocq implica a definição intuitiva 
+mencionada acima.
+
+Dica: Enquanto você se acostuma com a definição de negação (not) do Rocq, 
+pode ser útil usar 'unfold not' próximo ao início das provas. *)

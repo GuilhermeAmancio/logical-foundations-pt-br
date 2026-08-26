@@ -319,3 +319,25 @@ Example teste_enesimo_erro2 : enesimo_erro [[1];[2]] 1 = Some [2].
 Proof. reflexivity. Qed.
 Example teste_enesimo_erro3 : enesimo_erro [true] 2 = None.
 Proof. reflexivity. Qed.
+
+(* Exercício *)
+(* Head da lista que lida com caso de erro *)
+Definition hd_erro {X : Type} (l : lista X) : option X :=
+   match l with
+   | [] => None
+   | h :: t => Some h
+   end.
+
+Check @hd_erro : forall X : Type, lista X -> option X.
+
+Example test_hd_erro1 : hd_erro [1;2] = Some 1.
+
+Proof.
+   reflexivity.
+Qed.
+ 
+Example test_hd_erro2 : hd_erro [[1];[2]] = Some [1].
+
+Proof.
+   reflexivity.
+Qed.

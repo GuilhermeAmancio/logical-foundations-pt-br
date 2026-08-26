@@ -70,6 +70,42 @@ Example teste_filter2':
 
 Proof. reflexivity. Qed.
 
+(* Exercício *)
+(* Função que mantem elementos que são pares e maiores que 7*)
+Definition filter_par_maior_que_7 (l : list nat) : list nat :=
+     filter (fun x => andb (7 <? x) (even x)) l.
+
+Example teste_filter_par_maior_que_7_1 :
+  filter_par_maior_que_7 [1;2;6;9;10;3;12;8] = [10;12;8].
+
+Proof.
+  reflexivity.
+Qed.
+
+Example teste_filter_par_maior_que_7_2 :
+  filter_par_maior_que_7 [5;2;6;19;129] = [].
+
+Proof.
+  reflexivity.
+Qed.
+
+  
+Definition particao {X : Type} (teste : X -> bool) (l : list X) : list X * list X :=
+  (filter teste l, filter(fun x => negb (teste x))l).
+  
+Example teste_particao1: particao odd [1;2;3;4;5] = ([1;3;5], [2;4]).
+Proof.
+  reflexivity.
+Qed.
+
+Example teste_particao2: particao (fun x => false) [5;9;0] = ([], [5;9;0]).
+Proof.
+  reflexivity.
+Qed.
+
+
+
+
 (* Outras duas funções de alta ordem importantes são Map e Fold *)
 
 (* Map *)
