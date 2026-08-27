@@ -104,8 +104,6 @@ Proof.
 Qed.
 
 
-
-
 (* Outras duas funções de alta ordem importantes são Map e Fold *)
 
 (* Map *)
@@ -127,12 +125,65 @@ Example teste_map3:
     = [[true;false];[false;true];[true;false];[false;true]].
 Proof. reflexivity. Qed.
 
+(* Exercício *)
+
+(* Lema Auxiliar *)
+Lemma juntar_map : forall (X Y: Type)(f: X -> Y)(l1 l2: list X),
+map f (l1 ++ l2) = map f l1 ++ map f l2.
+
+Proof.
+  intros X Y f l1 l2.
+  induction l1 as [| h1 t1 IHl1].
+  - reflexivity.
+  - simpl. rewrite IHl1. reflexivity.
+Qed.
+
+
+Theorem map_rev : forall (X Y : Type) (f : X -> Y) (l : list X),
+  map f (rev l) = rev (map f l).
+
+Proof.
+  intros X Y f l.
+  induction l as [| h t IHl].
+  - reflexivity.
+  - simpl. rewrite juntar_map. simpl. rewrite IHl. reflexivity.
+Qed.
+
+(* Exercício *)
+Fixpoint mapeamento_achatado {X Y: Type} (f: X -> list Y) (l: list X) : list Y :=
+   match l with
+   | [] => []
+   | h :: t => (f h) ++ mapeamento_achatado f t
+   end.
+ 
+Example teste_mapeamento_achatado1:
+  mapeamento_achatado (fun n => [n;n;n]) [1;5;4] = [1; 1; 1; 5; 5; 5; 4; 4; 4].
+ 
+Proof.
+  reflexivity.
+Qed.
+
 (* Usando map com options *)
  Definition option_map {X Y : Type} (f : X -> Y) (xo : option X)
                       : option Y :=
   match xo with
   | None => None
   | Some x => Some (f x)
+  end.
+
+(* Exercício *)
+Fixpoint filter' (X : Type) (teste : X -> bool) (l : list X) : list X :=
+  match l with
+  | [] => []
+  | h :: t =>
+    if teste  h then  h :: (filter' X teste t)
+    else filter' X teste t
+  end.
+
+Fixpoint map' (X Y : Type) (f : X -> Y) (l : list X) : list Y :=
+  match l with
+  | [] => []
+  | h :: t => (f h) :: (map' X Y f t)
   end.
 
 (* Fold *)
@@ -186,3 +237,40 @@ Example teste_plus3' : facaisso3vezes plus3 0 = 9.
 Proof. reflexivity. Qed.
 Example teste_plus3'' : facaisso3vezes (plus 3) 0 = 9.
 Proof. reflexivity. Qed.
+
+(* Exercícios Adicionais *)
+
+(* Muitas funções comuns em listas podem ser implementadas em termos de 
+fold. Por exemplo, aqui está uma definição alternativa de tamanho: *)
+
+Definition fold_tamanho {X : Type} (l : list X) : nat :=
+  fold (fun _ n => S n) l 0.
+
+Example teste_fold_tamanho1 : fold_tamanho [4;7;0] = 3.
+Proof.
+  reflexivity.
+Qed.
+
+(* Prove a corretude de fold_length.
+
+Dica: Você pode acabar em uma situação em que sente que o simpl deveria 
+ser capaz de simplificar fold_length, mas ele não faz nada. Nesses casos, 
+você pode usar a tática unfold para expandir a definição de uma função antes 
+da simplificação, por exemplo: unfold fold_length. simpl. Essa tática será 
+discutida mais a fundo no próximo capítulo.*)
+
+
+Theorem fold_length_correct : forall X (l : list X),
+  fold_tamanho l = length l.
+
+Proof.
+   intros X l.
+   unfold fold_tamanho. induction l as [| h t IHl].
+   - reflexivity.
+   - simpl. rewrite IHl. reflexivity.
+Qed.
+
+(* Também podemos definir o map em termos de fold. Termine o fold_map abaixo. *)
+
+Definition fold_map {X Y: Type} (f: X -> Y) (l: list X) : list Y :=
+  fold (fun x acc => (f x) :: acc ) l [].

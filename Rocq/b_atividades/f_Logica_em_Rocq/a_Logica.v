@@ -377,4 +377,46 @@ princípio da explosão. *)
 mencionada acima.
 
 Dica: Enquanto você se acostuma com a definição de negação (not) do Rocq, 
-pode ser útil usar 'unfold not' próximo ao início das provas. *)
+pode ser útil usar 'unfold negacao' próximo ao início das provas. *)
+
+Theorem negacao_implica_nossa_negacao : forall (P:Prop),
+  ~ P -> (forall (Q:Prop), P -> Q).
+
+Proof.
+  intros P HNP Q HP.
+  unfold negacao in HNP.
+  apply HNP in HP.
+  destruct HP.
+Qed.
+
+(* A desigualdade é uma forma muito comum de declaração negada, por isso 
+existe uma notação especial para ela: *)
+
+Notation "x <> y" := (~(x = y)) : type_scope.
+
+(*Por exemplo*)
+Theorem zero_nao_one : 0 <> 1.
+Proof.
+  
+(* A proposição 0 ≠ 1 é exatamente a mesma que ~(0 = 1) — ou seja, negacao
+(0 = 1) — que se desdobra em (0 = 1) → False. (Usamos unfold negacao 
+explicitamente para ilustrar esse ponto, mas geralmente ele pode ser 
+omitido). *)
+   unfold negacao.
+
+(* Para provar uma desigualdade, podemos assumir a igualdade oposta... *)
+   intros contra.
+
+(* e deduzir uma contradição a partir dela. Aqui, a igualdade O = S O 
+contradiz a disjuntiva dos construtores O e S, então o comando 
+`discriminate` cuida disso *)
+    discriminate contra.
+Qed.
+
+(* É preciso um pouco de prática para se acostumar a trabalhar com a negação 
+no Rocq. Mesmo que você veja perfeitamente bem por que uma afirmação 
+envolvendo negação é verdadeira, pode ser um pouco complicado no início 
+entender como fazer o Rocq compreendê-la!
+
+Aqui estão as demonstrações de alguns fatos familiares para ajudar a 
+aquecer. *)
