@@ -441,6 +441,29 @@ Proof.
   intros P H. unfold negacao. intros G. apply G. apply H. Qed.
 
 (* Exercício *)
+
+(* Escreva uma prova informal de double_neg:
+
+Teorema: P implica ~~P, para qualquer proposição P. 
+
+Seja P uma proposição arbitrária. Queremos demonstrar que P implica ¬¬P, ou 
+seja, P→¬¬P.
+
+    Assumimos que P é verdadeira (seja H essa premissa).
+
+    Pela definição de negação, provar ¬¬P significa provar ¬P → False, ou 
+    seja, que assumir ¬P leva a uma contradição.
+
+    Introduzimos então a hipótese auxiliar ¬P (ou seja, P→False) e a 
+    chamamos de G.
+
+    Como nosso objetivo atual é alcançar uma contradição (o absurdo False), 
+    podemos aplicar a nossa hipótese G, sabendo que para usá-la precisamos 
+    fornecer uma prova de P.
+
+    Fornecemos exatamente a prova de P que tínhamos inicialmente na hipótese 
+    H, fechando a contradição e provando o teorema. *)
+
 Theorem contrapositiva : forall (P Q : Prop),
   (P -> Q) -> (~Q -> ~P).
 
@@ -455,8 +478,31 @@ Theorem negacao_ambos_verdadeiro_e_falso : forall P : Prop,
 
 Proof.
  intros P H.
- unfold negacao in H. destruct H. apply H0. apply H.
+  destruct H as [HP HnP].
+  unfold negacao in HnP.
+  apply HnP.
+  apply HP.
 Qed.
+
+(* Escreva uma prova informal da proposição ∀ P : Prop, ~(P ∧ ¬P).
+
+Seja P uma proposição arbitrária. Queremos demonstrar que é impossível que 
+P e sua negação ocorram simultaneamente, ou seja, ~(P ∧ ¬P).
+
+Seja P uma proposição qualquer, e assuma por hipótese que a conjunção 
+(P ∧ ¬P) é verdadeira (chamemos essa premissa de H).
+
+Como H é uma conjunção, podemos dividi-la em duas partes: chamamos o lado 
+esquerdo (P) de HP e o lado direito (¬P) de HnP.
+
+Expandimos a definição de negação em HnP, transformando-o na implicação 
+P → False. 
+
+Para alcançar uma contradição (o objetivo False), aplicamos a hipótese HnP, o 
+que nos obriga a provar P.
+
+Usamos diretamente a parte HP para satisfazer esse objetivo, concluindo a 
+demonstração. *)
 
 (* As Leis de De Morgan, batizadas em homenagem a Augustus De Morgan, 
 descrevem como a negação interage com a conjunção e a disjunção. A lei a 
@@ -529,3 +575,49 @@ Proof.
 Qed.
 
 (********************************** Verdade *******************************)
+
+(* Além de False, a biblioteca padrão do Rocq também define True, uma 
+proposição que é trivialmente verdadeira. Para prová-la, usamos a constante 
+I : True, que também está definida na biblioteca padrão: *)
+
+Lemma True_e_verdadeiro : True.
+Proof. apply I. Qed.
+
+(* Ao contrário de False, que é usado extensivamente, True é usado 
+relativamente pouco: é trivial (e, portanto, desinteressante) de provar 
+como um objetivo, e não fornece nenhuma informação útil quando aparece como 
+uma hipótese.
+
+No entanto, True pode ser bastante útil ao definir Props complexas usando 
+condicionais ou como um parâmetro para Props de ordem superior. Voltaremos a 
+isso mais tarde.
+
+Por ora, vamos dar uma olhada em como podemos usar True e False para alcançar 
+um efeito semelhante ao da tática discriminate, sem usar literalmente o 
+discriminate.
+
+A correspondência de padrões (pattern-matching) nos permite fazer coisas 
+diferentes para diferentes construtores. Se o resultado de aplicar dois 
+construtores diferentes fosse hipoteticamente igual, poderíamos usar match 
+para converter uma declaração improvável (como False) em uma que seja 
+provável (como True). *)
+
+Definition disc_fn (n: nat) : Prop :=
+  match n with
+  | O => True
+  | S _ => False
+  end.
+
+Theorem disc_example : forall n, ~ (O = S n).
+
+Proof.
+  intros n contra.
+  assert (H : disc_fn O). { simpl. apply I. }
+  rewrite contra in H. simpl in H. apply H.
+Qed.
+
+(* Para generalizar isso para outros construtores, precisamos apenas 
+fornecer uma variante apropriada de disc_fn. Para generalizá-lo para 
+outras conclusões, podemos usar exfalso para substituí-las por False.
+
+A tática integrada discriminate cuida de tudo isso para nós. *)
