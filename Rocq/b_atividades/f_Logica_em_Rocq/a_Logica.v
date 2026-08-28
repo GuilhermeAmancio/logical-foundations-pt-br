@@ -420,3 +420,112 @@ entender como fazer o Rocq compreendê-la!
 
 Aqui estão as demonstrações de alguns fatos familiares para ajudar a 
 aquecer. *)
+
+Theorem negacao_False :
+  ~ False.
+
+Proof.
+  unfold negacao. intros H. destruct H. Qed.
+
+Theorem contradicao_implica_qualquer_coisa : forall P Q : Prop,
+  (P /\ ~P) -> Q.
+Proof.
+  (* TRABALHADO EM AULA *)
+  intros P Q [HP HNP]. unfold negacao in HNP.
+  apply HNP in HP. destruct HP. Qed.
+
+Theorem dupla_neg : forall P : Prop,
+  P -> ~~P.
+Proof.
+  (* TRABALHADO EM AULA *)
+  intros P H. unfold negacao. intros G. apply G. apply H. Qed.
+
+(* Exercício *)
+Theorem contrapositiva : forall (P Q : Prop),
+  (P -> Q) -> (~Q -> ~P).
+
+Proof.
+  intros P Q H HNQ HP.
+  unfold negacao in HNQ. apply H in HP. apply HNQ in HP. apply HP.
+Qed.
+
+
+Theorem negacao_ambos_verdadeiro_e_falso : forall P : Prop,
+  ~ (P /\ ~P).
+
+Proof.
+ intros P H.
+ unfold negacao in H. destruct H. apply H0. apply H.
+Qed.
+
+(* As Leis de De Morgan, batizadas em homenagem a Augustus De Morgan, 
+descrevem como a negação interage com a conjunção e a disjunção. A lei a 
+seguir diz que a ''negação de uma disjunção é a conjunção das negações''. 
+Há uma lei dual de_morgan_not_and_not à qual retornaremos no final deste 
+capítulo. *)
+
+Theorem de_morgan_negacao_ou : forall (P Q : Prop),
+    ~ (P \/ Q) -> ~P /\ ~Q.
+
+Proof.
+  intros P Q H.
+  split.
+  (* ~P *)
+  intro HP.
+  unfold negacao in H.
+  destruct H. 
+  left. apply HP.
+  (* ~Q *)
+  intro HQ.
+  unfold negacao in H.
+  destruct H.
+  right. apply HQ.
+Qed.
+
+(* Como estamos trabalhando com números naturais, podemos demonstrar que 
+S e pred não são inversos um do outro: *)
+Lemma negacao_S_pred_n : ~(forall n : nat, S (pred n) = n).
+
+Proof.
+   intros Hn. 
+   specialize Hn with (n := O) . discriminate.
+Qed.
+
+(* Como a desigualdade envolve uma negação, também é preciso um pouco de 
+prática para conseguir trabalhar com ela fluentemente. Aqui está um truque 
+útil. 
+Se você está tentando provar um objetivo que não faz sentido (por exemplo, 
+o estado do objetivo é false = true), aplique ex_falso_quodlibet para mudar 
+o objetivo para False.
+Isso facilita o uso de hipóteses da forma ¬P que possam estar disponíveis 
+no contexto — em particular, hipóteses da forma x ≠ y. *)
+
+Theorem negacao_true_e_false : forall b : bool,
+  b <> true -> b = false.
+
+Proof.
+  intros b H. destruct b eqn:HE.
+  - (* b = true *)
+    unfold not in H.
+    apply ex_falso_quodlibet.
+    apply H. reflexivity.
+  - (* b = false *)
+    reflexivity.
+Qed.
+
+(* Como o raciocínio com ex_falso_quodlibet é bastante comum, o Rocq 
+fornece uma tática nativa, exfalso, para aplicá-lo. *)
+
+Theorem negacao_true_e_false' : forall b : bool,
+  b <> true -> b = false.
+
+Proof.
+  intros [] H. (* note o destruct b implícito aqui! *)
+  - (* b = true *)
+    unfold not in H.
+    exfalso. (* <=== *)
+    apply H. reflexivity.
+  - (* b = false *) reflexivity.
+Qed.
+
+(********************************** Verdade *******************************)

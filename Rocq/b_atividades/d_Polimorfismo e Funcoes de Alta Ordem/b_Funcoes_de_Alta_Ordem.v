@@ -274,3 +274,52 @@ Qed.
 
 Definition fold_map {X Y: Type} (f: X -> Y) (l: list X) : list Y :=
   fold (fun x acc => (f x) :: acc ) l [].
+
+(* O tipo X→Y→Z pode ser lido como descrevendo funções que recebem dois 
+argumentos, um do tipo X e outro do tipo Y, e retornam uma saída do tipo Z. 
+Lembre-se da nossa discussão sobre aplicação parcial de que este tipo é 
+escrito como X→(Y→Z) quando totalmente parentesizado. Ou seja, se tivermos 
+f:X→Y→Z, e dermos a f uma entrada do tipo X, ela nos dará como saída uma 
+função do tipo Y→Z. Se então dermos a essa função uma entrada do tipo Y, 
+ela retornará uma saída do tipo Z. Em outras palavras, toda função em Rocq 
+aceita apenas uma entrada, mas algumas funções retornam uma função como 
+saída. Isso é exatamente o que permite a aplicação parcial, como vimos 
+acima com plus3.
+
+Em contrapartida, funções do tipo X×Y→Z — que, quando totalmente 
+parentesizadas, são escritas como (X×Y)→Z — exigem que sua única entrada 
+seja um par. Ambos os argumentos devem ser fornecidos de uma só vez; não há 
+possibilidade de aplicação parcial.
+
+É possível converter uma função entre esses dois tipos. A conversão de X×Y→Z 
+para X→Y→Z é chamada de currificação (currying), em homenagem ao lógico 
+Haskell Curry. A conversão de X→Y→Z para X×Y→Z é chamada de descurrificação 
+(uncurrying).
+
+Podemos definir a currificação da seguinte forma:*)
+Definition prod_curry {X Y Z : Type}
+  (f : X * Y -> Z) (x : X) (y : Y) : Z := f (x, y).
+
+(* Como exercício, defina seu inverso, prod_uncurry. Em seguida, prove os 
+teoremas abaixo para mostrar que os dois são realmente inversos. *)
+Definition prod_uncurry {X Y Z : Type}
+  (f : X -> Y -> Z) (p : X * Y) : Z :=
+   match p with
+   | (x, y) =>  f x y
+   end.
+
+(* Como um exemplo (trivial) da utilidade da currificação, podemos usá-la 
+para encurtar um dos exemplos que vimos acima: *)
+Example test_map1': map (plus 3) [2;0;2] = [5;3;5].
+Proof. reflexivity. Qed.
+
+Check @prod_curry.
+Check @prod_uncurry.
+
+Theorem uncurry_curry : forall (X Y Z : Type) (f : X -> Y -> Z) x y,
+    prod_curry (prod_uncurry f) x y = f x y.
+
+Proof.
+  intros X Y Z f x y. 
+  unfold prod_uncurry. unfold prod_curry. reflexivity.
+Qed.
