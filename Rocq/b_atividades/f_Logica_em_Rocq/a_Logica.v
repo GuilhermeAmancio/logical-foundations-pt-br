@@ -1,3 +1,9 @@
+Require Import Nat.
+Require Import List.
+Import List.
+Import ListNotations.
+
+
 (* LÓGICA *)
 (* LÓGICA EM ROCQ*)
 
@@ -621,3 +627,259 @@ fornecer uma variante apropriada de disc_fn. Para generalizá-lo para
 outras conclusões, podemos usar exfalso para substituí-las por False.
 
 A tática integrada discriminate cuida de tudo isso para nós. *)
+
+(* Utilize a mesma técnica acima para mostrar que nil ≠ x :: xs. Não utilize 
+a tática discriminate. *)
+
+Definition disc_fn' {X : Type} (l: list X) : Prop :=
+  match l with
+  | [] => True
+  | h :: t => False
+  end.
+
+Theorem nil_e_negacao_de_cons : forall X (x : X) (xs : list X), 
+~ (nil = x :: xs).
+
+Proof.
+   intros X x xs contra.
+   assert (H : @disc_fn' X []). { simpl. apply I. }
+   rewrite contra in H. simpl in H. apply H.
+Qed.
+  
+(******************************* Equivalência Lógica **********************)
+
+(* O útil conectivo ''se e somente se'', que afirma que duas proposições têm 
+o mesmo valor de verdade, é simplesmente a conjunção de duas implicações. *)
+Print "<->".
+
+(* ===>
+     Notation ''A <-> B'' := (iff A B)
+
+     iff = fun A B : Prop => (A -> B) /\ (B -> A)
+         : Prop -> Prop -> Prop
+
+     Arguments iff (A B) *)
+
+Theorem sse_simetrico : forall P Q : Prop,
+  (P <-> Q) -> (Q <-> P).
+
+Proof.
+  (* TRABALHADO EM AULA *)
+  intros P Q [HAB HBA].
+  split.
+  - (* -> *) apply HBA.
+  - (* <- *) apply HAB. Qed.
+
+Lemma negacao_true_sse_false : forall b,
+  b <> true <-> b = false.
+
+Proof.
+  intros b. split.
+  - (* -> *) apply negacao_true_e_false.
+  - (* <- *)
+    intros H. rewrite H. intros H'. discriminate H'.
+Qed.
+
+(* Também podemos usar o apply com um ↔ em qualquer direção, sem pensar 
+explicitamente no fato de que ele é, na verdade, um ''e'' subjacente. *)
+
+Lemma apply_sse_exemplo1:
+  forall P Q R : Prop, (P <-> Q) -> (Q -> R) -> (P -> R).
+  
+Proof.
+  intros P Q R Hsse H HP. apply H. apply Hsse (* P -> Q *). apply HP.
+Qed.
+
+Lemma apply_sse_examplo2:
+  forall P Q R : Prop, (P <-> Q) -> (P -> R) -> (Q -> R).
+  
+Proof.
+  intros P Q R Hsse H HQ. apply H. apply Hsse (* Q -> P *). apply HQ.
+Qed.
+
+(* Exercício *)
+(* Usando a prova acima de que ↔ é simétrico (sse_simetrico) como guia, 
+prove que ele também é reflexivo e transitivo. *)
+Theorem sse_refl : forall P : Prop,
+  P <-> P.
+
+Proof.
+  intros P.
+  split.
+  - intros HP. apply HP.
+  - intros HP. apply HP.
+Qed.
+
+Theorem sse_trans : forall P Q R : Prop,
+  (P <-> Q) -> (Q <-> R) -> (P <-> R).
+
+Proof.
+  intros P Q R [HPQ HQP] HbiQR. destruct HbiQR.
+  split. 
+  (* P -> R*)
+  - intros HP. apply H. apply HPQ. apply HP.
+  (* R -> P *)
+  - intros HR. apply HQP. apply H0. apply HR.
+Qed.
+
+Theorem ou_distributiva_sobre_e : forall P Q R : Prop,
+  P \/ (Q /\ R) <-> (P \/ Q) /\ (P \/ R). 
+
+Proof.
+   intros P Q R.
+   split.
+   - intros [HP | [HQ HR]]. 
+     + split. left. apply HP. left. apply HP.
+     + split. right. apply HQ. right. apply HR.
+   - intros [[HP | HQ] [HP' | HR]].
+    + left. apply HP.
+    + left. apply HP.
+    + left. apply HP'. 
+    + right. split. apply HQ. apply HR.
+Qed.
+
+(********************** Setoides e Equivalência Lógica ********************)
+
+(* Algumas táticas do Rocq tratam sentenças sse (iff) de maneira especial, 
+evitando parte da manipulação de baixo nível do estado de prova. Em 
+particular, rewrite e reflexivity podem ser usadas com sentenças sse, e não 
+apenas com igualdades. Para habilitar esse comportamento, precisamos 
+importar a biblioteca do Rocq que dá suporte a isso: *)
+From Stdlib Require Import Setoids.Setoid.
+
+(* Um ''setoide'' é um conjunto equipado com uma relação de equivalência — 
+isto é, uma relação que é reflexiva, simétrica e transitiva. Quando dois 
+elementos de um conjunto são equivalentes de acordo com a relação, `rewrite` 
+pode ser usado para substituir um pelo outro.
+
+Já vimos isso antes com a relação de igualdade `=` no Rocq: quando `x = y`, 
+podemos usar `rewrite` para substituir `x` por `y` ou vice-versa.
+
+Da mesma forma, a relação de equivalência lógica `↔` é reflexiva, simétrica 
+e transitiva, então podemos usá-la para substituir uma parte de uma 
+proposição por outra: se `P ↔ Q`, podemos usar `rewrite` para substituir `P` 
+por `Q`, ou vice-versa.
+
+Aqui está um exemplo simples demonstrando como essas táticas funcionam com 
+`sse`.
+
+Primeiro, vamos provar algumas equivalências básicas de `sse`. (Para essas 
+provas, ainda não estamos usando setoides.) *)
+
+Lemma mul_eq_0 : forall n m, n * m = 0 <-> n = 0 \/ m = 0.
+
+Proof.
+  split.
+  - apply mult_e_O.
+  - apply fator_e_O.
+Qed.
+
+Theorem ou_assoc :
+  forall P Q R : Prop, P \/ (Q \/ R) <-> (P \/ Q) \/ R.
+  
+Proof.
+  intros P Q R. split.
+  - intros [H | [H | H]].
+    + left. left. apply H.
+    + left. right. apply H.
+    + right. apply H.
+  - intros [[H | H] | H].
+    + left. apply H.
+    + right. left. apply H.
+    + right. right. apply H.
+Qed.
+
+(* Podemos agora usar esses fatos com rewrite e reflexivity para provar uma 
+versão ternária do fato mult_eq_0 acima, sem precisar dividir o sse de nível 
+superior: *)
+
+Lemma mul_eq_0_ternario :
+  forall n m p, n * m * p = 0 <-> n = 0 \/ m = 0 \/ p = 0
+  .
+Proof.
+  intros n m p.
+  rewrite mul_eq_0. rewrite mul_eq_0. rewrite ou_assoc.
+  reflexivity.
+Qed.
+
+(************************* Quantificação Existencial **********************)
+
+(* Outro conectivo lógico fundamental é a quantificação existencial. Para 
+dizer que existe algum x do tipo T tal que alguma propriedade P é válida 
+para x, escrevemos ∃ x : T, P. Assim como com o ∀, a anotação de tipo : T 
+pode ser omitida se o Rocq for capaz de inferir a partir do contexto qual 
+deveria ser o tipo de x.
+Para provar uma afirmação da forma ∃ x, P, devemos mostrar que P é válida 
+para alguma escolha específica de x, conhecida como a testemunha (witness) 
+da quantificação existencial. Isso é feito em duas etapas: primeiro, dizemos 
+explicitamente ao Rocq qual testemunha t temos em mente invocando a tática 
+∃ t. Em seguida, provamos que P é válida após todas as ocorrências de x 
+serem substituídas por t. *)
+
+Definition Par x := exists n : nat, x = Nat.double n.
+
+Check Par : nat -> Prop.
+
+Lemma quatro_e_Par : Par 4.
+
+Proof.
+  unfold Par. exists 2. reflexivity.
+Qed.
+
+(* Por outro lado, se temos uma hipótese existencial ∃ x, P no contexto, 
+podemos usar destruct nela para obter uma testemunha x e uma hipótese 
+afirmando que P é válida para x. *)
+
+Theorem existe_examplo_2 : forall n,
+  (exists m, n = 4 + m) ->
+  (exists o, n = 2 + o).
+
+Proof.
+  (* TRABALHADO EM AULA *)
+  intros n [m Hm]. (* note o destruct implícito aqui *)
+  exists (2 + m).
+  apply Hm. Qed.
+
+(* Exercício *)
+(* Prove que ''P é válido para todo x'' implica ''não existe x para o qual 
+P não seja válido''. (Dica: destruct H as [x E] funciona em hipóteses 
+existenciais!) *)
+Theorem dist_nao_existe : forall (X:Type) (P : X -> Prop),
+  (forall x, P x) -> ~ (exists x, ~ P x).
+
+Proof.
+  intros X P Hf He.
+  destruct He as [x E].
+  unfold negacao in E. apply E. apply Hf.
+Qed.
+
+(* Prove que a quantificação existencial se distribui sobre a disjunção. *)
+Theorem dist_existe_ou : forall (X:Type) (P Q : X -> Prop),
+  (exists x, P x \/ Q x) <-> (exists x, P x) \/ (exists x, Q x).
+
+Proof.
+   intros X P Q. 
+   split.
+   - intros [x H]. destruct H.
+    + left. exists x. apply H.
+    + right. exists x. apply H.
+   - intros [HeP | HeQ]. destruct HeP.
+    + exists x. left. apply H.
+    + destruct HeQ. exists x. right. apply H.
+Qed.
+
+Theorem leb_mais_existe : forall n m, n <=? m = true -> exists x, m = n + x.
+
+Proof.
+ intros n.
+ induction n as [| n' IHn'].
+ - intros m H.
+   exists m. reflexivity.
+ - intros m H.
+   destruct m as [| m'].
+   + discriminate H.
+   + simpl in H.
+     apply IHn' in H.
+     destruct H as [x Hx].
+     exists x. simpl. rewrite Hx. reflexivity.
+Qed.
