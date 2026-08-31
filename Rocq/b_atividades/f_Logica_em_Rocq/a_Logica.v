@@ -883,3 +883,182 @@ Proof.
      destruct H as [x Hx].
      exists x. simpl. rewrite Hx. reflexivity.
 Qed.
+
+Theorem mais_existe_leb : forall n m, 
+    (exists x, m = n + x) -> n <=? m = true.
+
+Proof.
+  intros n.
+  induction n as [| n' IHn'].
+  - intros m H. 
+     reflexivity.
+  - intros m H. destruct H as [x E].
+     + destruct m as [| m'].
+       discriminate E.
+       simpl. apply IHn'. exists x. injection E as E. apply E.
+Qed.
+
+(************** Recapitulação -- Conectivos lógicos no Rocq ***************)
+
+(* Conectivos básicos:
+
+    and (e) : Prop → Prop → Prop (conjunção): 
+    introduzido com a tática split; 
+    eliminado com destruct H as [H1 H2]
+
+    or (ou) : Prop → Prop → Prop (disjunção): 
+    introduzido com as táticas left e right; 
+    eliminado com destruct H as [H1 | H2]
+
+    False : Prop 
+    eliminado com destruct H as []
+
+    True : Prop 
+    introduzido com apply I, mas não tão útil
+
+    ex : ∀ A:Type, (A → Prop) → Prop (existencial): 
+    introduzido com ∃ w; 
+    eliminado com destruct H as [x H]
+
+Conectivos derivados:
+
+    not (negacao) : Prop → Prop (negação): 
+    not P definido como P → False
+
+    iff (sse) : Prop → Prop → Prop (equivalência lógica): 
+    iff P Q definido como (P → Q) ∧ (Q → P)
+
+Conectivos fundamentais que estamos usando desde o início:
+
+    igualdade (e1 = e2)
+
+    implicação (P → Q)
+
+    quantificação universal (∀ x, P) *)
+
+(*********************** Programação com Proposições **********************)
+
+(* Os conectivos lógicos que vimos fornecem um vocabulário rico para 
+definir proposições complexas a partir de outras mais simples. Para 
+ilustrar, vamos ver como expressar a afirmação de que um elemento x ocorre 
+em uma lista $l$. Note que essa propriedade tem uma estrutura recursiva 
+simples:Se l é a lista vazia, então x não pode ocorrer nela, logo a 
+propriedade ''x aparece em l'' é simplesmente falsa. Caso contrário, l tem a 
+forma x' :: l'. Nesse caso, x ocorre em l se for igual a x' ou se ocorrer em 
+l'. Podemos traduzir isso diretamente para uma função recursiva direta que 
+recebe um elemento e uma lista e retorna... uma proposição! *)
+
+Fixpoint In {A : Type} (x : A) (l : list A) : Prop :=
+  match l with
+  | [] => False
+  | x' :: l' => x' = x \/ In x l'
+  end.
+
+(* Quando In é aplicado a uma lista concreta, ele se expande em uma 
+sequência concreta de disjunções aninhadas. *)
+
+Example In_examplo_1 : In 4 [1; 2; 3; 4; 5].
+
+Proof.
+  (* TRABALHADO EM AULA *)
+  simpl. right. right. right. left. reflexivity.
+Qed.
+
+Example In_examplo_2 :
+  forall n, In n [2; 4] -> Par n.
+
+Proof.
+  (* TRABALHADO EM AULA *)
+  intros n H. unfold Par. simpl in H.
+  destruct H as [H | [H | []]].
+  - rewrite <- H. exists 1. reflexivity.
+  - rewrite <- H. exists 2. reflexivity.
+Qed.
+
+(* (Note o uso do padrão vazio para descartar o último caso en passant.)
+
+Também podemos raciocinar sobre declarações mais genéricas envolvendo o In. *)
+
+Theorem In_map :
+  forall (A B : Type) (f : A -> B) (l : list A) (x : A),
+         In x l ->
+         In (f x) (map f l).
+
+Proof.
+  intros A B f l x H.
+  induction l as [|x' l' IHl'].
+  - (* l = nil, contradição *)
+    simpl. simpl in H. destruct H as [].
+  - (* l = x' :: l' *)
+    simpl. simpl in H. destruct H as [H | H].
+    + rewrite H. left. reflexivity.
+    + right. apply IHl'. apply H.
+Qed.
+
+(* (Note aqui como o In começa aplicado a uma variável e só é expandido 
+quando fazemos análise de casos nessa variável.)
+
+Essa forma de definir proposições recursivamente é muito conveniente em 
+alguns casos, e menos em outros. Em particular, ela está sujeita às 
+restrições usuais do Rocq referentes a definições de funções recursivas, 
+por exemplo, a exigência de que sejam ''obviamente terminantes'' 
+(garantidas como finitas).
+
+No próximo capítulo, veremos como definir proposições indutivamente — uma 
+técnica diferente com suas próprias forças e limitações. *)
+
+(* Exercício *)
+Theorem In_map_sse :
+  forall (A B : Type) (f : A -> B) (l : list A) (y : B),
+         In y (map f l) <->
+         exists x, f x = y /\ In x l.
+
+Proof.
+  intros A B f l y. split.
+  (* -> *)
+  - induction l as [|x l' IHl'].
+    + simpl. intros H. destruct H as []. (* Lista vazia: absurdo *)
+    + simpl. intros [H | H].
+      * exists x. split.
+        -- apply H.             (* f x = y *)
+        -- left. reflexivity.   (* x é o primeiro elemento *)
+      * apply IHl' in H as [x0 [H1 H2]].
+        exists x0. split.
+        -- apply H1.
+        -- right. apply H2.     (* x0 está na cauda *)
+  (* <- *)
+  - intros [x [H1 H2]].
+    rewrite <- H1.
+    induction l as [|x' l' IHl'].
+    + destruct H2 as [].        (* Lista vazia contradiz H2 *)
+    + simpl in H2. destruct H2 as [H2 | H2].
+      * subst x'. simpl. left. reflexivity.  (* x é a cabeça *)
+      * simpl. right. apply IHl'. apply H2.  (* x está na cauda *)
+Qed.
+
+Theorem In_juntar_sse : forall A l l' (a:A),
+  In a (l ++ l') <-> In a l \/ In a l'.
+
+Proof.
+  intros A l. induction l as [|a' l' IH]. split. 
+   (* lista vazia *)
+  - simpl. intros H_in. right. apply H_in. (* -> *)
+   (* <- *)
+  - simpl. intros H_ou. destruct H_ou as [H | H].
+    + destruct H as [].
+    + apply H.
+  (* lista com head e tail *) 
+  - split.
+     (* -> *) 
+     + intros H_in. simpl. simpl in H_in. destruct H_in as [H | H].
+       * left. left. apply H.
+       * apply IH in H. destruct H as [H | H].
+          -- left. right. apply H.
+          -- right. apply H.
+      (* <- *)
+      + intros H_in. simpl. simpl in H_in. destruct H_in as [H | H].
+        * destruct H as [H | H].
+          -- left. apply H.
+          -- right. apply IH. left. apply H.
+        * right. apply IH. right. apply H.
+Qed.      
