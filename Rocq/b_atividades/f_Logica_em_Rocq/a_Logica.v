@@ -1061,4 +1061,65 @@ Proof.
           -- left. apply H.
           -- right. apply IH. left. apply H.
         * right. apply IH. right. apply H.
-Qed.      
+Qed.
+
+(* Observamos acima que funções que retornam proposições podem ser vistas 
+como propriedades de seus argumentos. Por exemplo, se P tem o tipo 
+nat → Prop, então P n afirma que a propriedade P é válida para n.
+Buscando inspiração em In, escreva uma função recursiva All afirmando que 
+alguma propriedade P é válida para todos os elementos de uma lista l. Para 
+garantir que sua definição está correta, prove o lema All_In abaixo. 
+(Naturalmente, sua definição não deve apenas reescrever o lado esquerdo de 
+All_In.) *)
+
+(* Todos os elementos tem que satisfazer a proposição ao mesmo tempo*)
+Fixpoint All {T : Type} (P : T -> Prop) (l : list T) : Prop :=
+   match l with
+   |[] => True
+   | x :: l' => P x /\ All P l'
+   end.
+  
+Theorem All_In :
+  forall T (P : T -> Prop) (l : list T),
+    (forall x, In x l -> P x) <->
+    All P l.
+
+Proof.
+ intros T P  l. 
+ split.
+ (* -> *)
+ - induction l as [| h t IHl'].
+ (* [ ] *)
+   + reflexivity.
+ (* h :: t*)
+   + simpl. intros H. split.
+     ++ apply H. left. reflexivity.
+     ++ apply IHl'. intros x H1.
+        -- apply H. right. apply H1.
+  (* <- *)
+  - intros H. intros x. induction l as [| h t IHl'].
+  (* [ ] *)
+     + intros H_in. simpl in H_in. destruct H_in as [].
+  (* h :: t *)
+     + simpl in IHl'. simpl in H. intros H_in. simpl in H_in. 
+     destruct H as [H1 H2]. destruct H_in as [H | H].
+      ++ rewrite <- H. apply H1.
+      ++ apply IHl'. apply H2. apply H.
+Qed.
+
+(* Complete a definição de combine_odd_even abaixo. Ela recebe como 
+argumentos duas propriedades de números, Ppar e Pimpar, e deve retornar uma 
+propriedade P tal que P n seja equivalente a Pimpar n quando n for ímpar e 
+equivalente a Ppar n caso contrário. *)
+
+Definition combine_impar_par (Pimpar Ppar : nat -> Prop) : nat -> Prop :=
+   fun n => if  Nat.odd n then Pimpar n else Ppar n.
+
+(* Para testar sua definição, prove os seguintes fatos: *)
+Theorem combine_impar_par_intro :
+  forall (Pimpar Ppar : nat -> Prop) (n : nat),
+    (Nat.odd n = true -> Pimpar n) ->
+    (Nat.odd n = false -> Pimpar n) ->
+    combine_impar_par Pimpar Ppar n.
+    
+Proof.
