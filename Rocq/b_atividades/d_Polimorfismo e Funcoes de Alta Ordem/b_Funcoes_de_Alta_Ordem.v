@@ -408,6 +408,37 @@ função uma vez deve ser o mesmo que apenas aplicá-la. Portanto: *)
 
 Definition um : cnat := fun (X : Type) (f : X -> X) (x : X) => f x.
 
-(* Da mesma forma, o dois deve aplicar $f$ duas vezes ao seu argumento: *)
+(* Da mesma forma, o dois deve aplicar f duas vezes ao seu argumento: *)
 
 Definition dois : cnat := fun (X : Type) (f : X -> X) (x : X) => f (f x).
+
+(* Definir o zero é um pouco mais complicado: como podemos ''aplicar uma 
+função zero vezes''? A resposta na verdade é simples: basta retornar o 
+argumento inalterado. *)
+
+Definition zero : cnat :=
+  fun (X : Type) (f : X -> X) (x : X) => x.
+
+(* Mais geralmente, um número $n$ pode ser escrito como `fun X f x => 
+f (f ... (f x) ...)`, com n ocorrências de `f`. Vamos denotar isso 
+informalmente como `fun X f x => f^n x`, com a convenção de que `f^0 x` é 
+apenas `x`. Note como a função `facaisso3vezes` que definimos anteriormente 
+é na verdade apenas a representação de Church de 3. *)
+
+Definition tres : cnat := @facaisso3vezes.
+
+(* Portanto, n X f x representa ''faça isso n vezes'', onde n é um numeral 
+de Church e ''isso'' significa aplicar f começando com x.
+
+Outra maneira de pensar sobre a representação de Church é que a função f 
+representa a operação de sucessor em X, e o valor x representa o elemento 
+zero de X. Poderíamos até reescrever com esses nomes para deixar mais claro: *)
+
+Definition zero' : cnat :=
+  fun (X : Type) (sucessor : X -> X) (zero : X) => zero.
+
+Definition um' : cnat :=
+  fun (X : Type) (sucessor : X -> X) (zero : X) => sucessor zero.
+
+Definition dois' : cnat :=
+  fun (X : Type) (sucessor : X -> X) (zero : X) => sucessor (sucessor zero).
