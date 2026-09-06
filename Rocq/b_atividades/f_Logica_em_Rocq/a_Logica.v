@@ -2,8 +2,7 @@ Require Import Nat.
 Require Import List.
 Import List.
 Import ListNotations.
-
-
+Require Import Lia.
 (* LÓGICA *)
 (* LÓGICA EM ROCQ*)
 
@@ -816,7 +815,13 @@ explicitamente ao Rocq qual testemunha t temos em mente invocando a tática
 exists t. Em seguida, provamos que P é válida após todas as ocorrências de x 
 serem substituídas por t. *)
 
-Definition Par x := exists n : nat, x = Nat.double n.
+Fixpoint double (n:nat) :=
+  match n with
+  | O => O
+  | S n' => S (S (double n'))
+  end.
+
+Definition Par x := exists n : nat, x = double n.
 
 Check Par : nat -> Prop.
 
@@ -1348,7 +1353,10 @@ Proof.
   apply H.
 Qed.
 
-Lemma in_nao_e_nil_42_tentatica4 :
+(* Ou — esta é a novidade — podemos aplicar explicitamente o lema ao valor 
+42 para x: *)
+
+Lemma in_nao_e_nil_42_tentativa4 :
   forall l : list nat, In 42 l -> l <> [].
 
 Proof.
@@ -1356,3 +1364,182 @@ Proof.
   apply (in_nao_e_nil nat 42).
   apply H.
 Qed.
+
+(* Também podemos aplicar explicitamente o lema a uma hipótese, fazendo com 
+que os valores dos outros parâmetros sejam inferidos: *)
+Lemma in_nao_e_nil_42_tentativa5 :
+  forall l : list nat, In 42 l -> l <> [].
+
+Proof.
+  intros l H.
+  apply (in_nao_e_nil _ _ _ H).
+Qed.
+
+(* Você pode ''usar um teorema como uma função'' dessa maneira com quase 
+qualquer tática que possa receber o nome de um teorema como argumento.
+
+Note também que a aplicação de teoremas usa os mesmos mecanismos de 
+inferência que a aplicação de funções; portanto, é possível, por exemplo, 
+fornecer curingas (wildcards) como argumentos a serem inferidos, ou 
+declarar algumas hipóteses de um teorema como implícitas por padrão. Esses 
+recursos são ilustrados na prova abaixo. (Os detalhes de como essa prova 
+funciona não são críticos — o objetivo aqui é apenas ilustrar a aplicação 
+de teoremas a argumentos.) *)
+
+(* Lema Auxiliar *)
+Lemma mul_0_r : forall n : nat,
+  n * 0 = 0.
+
+Proof.
+   intros n.
+   induction n as [ | n' IHn'].
+   - simpl. reflexivity.
+   - simpl. rewrite -> IHn'. reflexivity.
+Qed. 
+
+
+Example lemma_aplicacao_ex :
+  forall {n : nat} {ns : list nat},
+    In n (map (fun m => m * 0) ns) ->
+    n = 0.
+
+Proof.
+  intros n ns H.
+  destruct (proj1 _ _ (In_map_sse _ _ _ _ _) H)
+           as [m [Hm _]].
+  rewrite mul_0_r in Hm. rewrite <- Hm. reflexivity.
+Qed.
+
+(* Veremos muitos outros exemplos nos próximos capítulos. *)
+
+(******** Trabalhando com Propriedades Decidíveis *********)
+
+(* Vimos duas maneiras diferentes de expressar afirmações 
+lógicas em Rocq: com booleanos (do tipo bool) e com 
+proposições (do tipo Prop).
+
+Aqui estão as principais diferenças entre bool e Prop:
+
+
+                                           bool     Prop
+                                           ====     ====
+           decidível?                      sim      não
+           utilizável com match?           sim      não
+           funciona com a tática rewrite?  não      sim
+
+A diferença crucial entre os dois mundos é a decidibilidade. 
+Toda expressão (fechada) de Rocq do tipo bool pode ser 
+simplificada em um número finito de passos para true ou 
+false — ou seja, existe um procedimento mecânico terminante 
+para decidir se ela é verdadeira ou não.
+
+Isso significa que, por exemplo, o tipo nat → bool é 
+habitado apenas por funções que, dado um nat, sempre 
+produzem true ou false em tempo finito; e isso, por sua vez, 
+significa (por um argumento padrão de computabilidade) que 
+não há nenhuma função em nat → bool que verifique se um 
+determinado número é o código de uma máquina de Turing que 
+termina.
+
+Em contrapartida, o tipo Prop inclui proposições matemáticas 
+tanto decidíveis quanto indecidíveis; em particular, o tipo 
+nat → Prop contém funções que representam propriedades como 
+''a n-ésima máquina de Turing para''.
+
+A segunda linha da tabela decorre diretamente dessa 
+diferença essencial. Para avaliar uma correspondência de 
+padrões (pattern match ou condicional) em um booleano, 
+precisamos saber se o objeto avaliado resulta em true ou 
+false; isso só funciona para bool, não para Prop.
+
+A terceira linha destaca uma diferença prática importante: 
+funções de igualdade como eqb_nat que retornam um booleano 
+não podem ser usadas diretamente para justificar a reescrita 
+com a tática rewrite; a igualdade proposicional é necessária 
+para isso.
+
+Como Prop inclui propriedades tanto decidíveis quanto 
+indecidíveis, temos duas opções quando queremos formalizar 
+uma propriedade que por acaso é decidível: podemos 
+expressá-la como uma computação booleana ou como uma função 
+em Prop. *)
+
+Example par_42_bool : Nat.even 42 = true.
+Proof. reflexivity. Qed.
+
+(* ... ou que existe algum k tal que n = double k *)
+
+Example par_42_prop : Par 42.
+Proof. unfold Par. exists 21. reflexivity. Qed.
+
+(* É claro que seria profundamente estranho se essas duas 
+caracterizações da paridade não descrevessem o mesmo 
+conjunto de números naturais!
+
+Felizmente, elas descrevem!
+
+Para provar isso, primeiro precisamos de dois lemas 
+auxiliares. *)
+
+Lemma par_double : forall k, even (double k) = true.
+Proof.
+  intros k. induction k as [ |k' IHk'].
+  - reflexivity.
+  - simpl. apply IHk'.
+Qed.
+
+(* Exercício *)
+(* Dica: Use the lema S_par de a_Inducao.v. *)
+Theorem negb_involutivo: (* Necessário mais tarde *)
+   forall b : bool,
+   negb (negb b) = b.
+
+Proof.
+   intros b. destruct b eqn: E.
+   - reflexivity.
+- reflexivity. Qed.
+
+Theorem S_par:
+   forall n: nat, even (S n) = negb (even n).
+
+Proof.
+   intros n. induction n as [ | n' IHn'].
+   - simpl. reflexivity.
+   - rewrite IHn'. simpl. rewrite negb_involutivo. reflexivity.
+Qed.
+
+Lemma even_double_conv : forall n, exists k,
+  n = if even n then double k else S (double k).
+  
+Proof.
+  intros n. 
+  induction n as [ | n' IHn'].
+  - exists O. reflexivity.
+  - destruct IHn' as [k IHk]. destruct (even n') eqn: Heven.
+    + exists k. rewrite IHk. rewrite S_par. rewrite par_double. simpl. reflexivity.
+    + exists (S k). rewrite IHk. rewrite S_par. rewrite <- IHk. rewrite Heven. 
+      simpl. rewrite <- IHk. reflexivity.
+Qed.
+
+(* Agora o teorema principal: *)
+
+Theorem par_bool_prop : forall n,
+  even n = true <-> Par n.
+
+Proof.
+  intros n. split.
+  - intros H. destruct (even_double_conv n) as [k Hk].
+    rewrite Hk. rewrite H. exists k. reflexivity.
+  - intros [k Hk]. 
+    rewrite Hk. 
+    apply par_double.
+Qed.
+
+(* Em vista deste teorema, podemos dizer que o cálculo booleano even n 
+reflete-se na veracidade da proposição ∃ k, n = double k. 
+
+Da mesma forma, para afirmar que dois números n e m são iguais, podemos dizer 
+que 
+(1) n =? m retorna true, ou 
+(2) n = m. 
+Mais uma vez, essas duas noções são equivalentes: *)
