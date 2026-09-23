@@ -2292,7 +2292,7 @@ Qed.
 Lemma cancela_soma_esquerda : forall n m p,
   n + m <= n + p -> m <= p.
 Proof.
-  induction n as [| n' IH].
+  induction n as [ | n' IH].
   - intros m p H. simpl in H. apply H.
   - intros m p H. simpl in H. apply IH. apply Sn_le_Sm__n_le_m. apply H.
 Qed.
@@ -2408,3 +2408,260 @@ Proof.
     + intros m. apply MUniaoEsquerda. apply Hall.
   Qed.
   
+
+Lemma bombeamento_fraco_uniao_direita : forall T (c2 : list T) (er1 er2 : exp_reg T),
+  c2 =~ er2 ->
+  (constante_de_bombeamento  er2 <= length c2 ->
+    exists c1 c3 c4 : list T,
+      c2 = c1 ++ c3 ++ c4 /\
+      c3 <> [ ] /\
+      (forall m : nat, c1 ++ nconc m c3 ++ c4 =~ er2)) ->
+  constante_de_bombeamento  (Uniao er1 er2) <= length c2 ->
+  exists c1 c0 c3 : list T,
+    c2 = c1 ++ c0 ++ c3 /\
+    c0 <> [ ] /\
+    (forall m : nat, c1 ++ nconc m c0 ++ c3 =~ Uniao er1 er2).
+Proof.
+  (* Simétrico ao anterior... *)
+  simpl. intros T c2 er1 er2 Hmatch IH Hlen.
+   assert (H : constante_de_bombeamento er2 <= length c2).
+  {
+     apply (le_trans _ (constante_de_bombeamento er1 + constante_de_bombeamento er2)).
+     rewrite add_comutativo. apply le_mais_l. apply Hlen.
+  }
+    destruct (IH H) as [c1' [c3' [c4' [Heq [Hne Hall]]]]].
+    exists c1', c3', c4'.
+    split.
+    - apply Heq.
+    - split.
+      + apply Hne.
+      + intros m. apply MUniaoDireita. apply Hall.
+      Qed.
+  
+Lemma bombeamento_fraco_estrela_zero : forall T (er : exp_reg T),
+  constante_de_bombeamento (Estrela er) <= @length T [] ->
+  exists c1 c2 c3 : list T,
+    [ ] = c1 ++ c2 ++ c3 /\
+    c2 <> [ ] /\
+    (forall m : nat, c1 ++ nconc m c2 ++c3 =~ Estrela er).
+Proof.
+  intros T er Hlen.
+  assert (Hineq : forall (er : exp_reg T), constante_de_bombeamento er <> 0). 
+    {       
+      intros er'. induction er' as [ | | x | er1 IH1 er2 IH2 | er1 IH1 er2 IH2 | er1 IH1].
+      - discriminate.
+      - discriminate.
+      - discriminate.
+      - simpl. destruct (constante_de_bombeamento er1) eqn:E1.
+        + exfalso. apply IH1. reflexivity.
+        + discriminate.
+      - simpl. destruct (constante_de_bombeamento er1) eqn:E1.
+        + exfalso. apply IH1. reflexivity.
+        + discriminate.
+      - simpl. apply IH1. 
+   }
+    exfalso. 
+    simpl in Hlen.
+    destruct (constante_de_bombeamento er) eqn:E.
+    - apply (Hineq er). apply E.
+    - inversion Hlen.
+    Qed.
+
+  
+(* Auxiliar 1: a ''volta'' construtiva do MEstrela'' — se todo elemento de cc
+   casa com er, a concatenação de todos eles casa com Estrela er. *)
+Lemma fold_estrela : forall T (er : exp_reg T) (cc : list (list T)),
+  (forall c', In c' cc -> c' =~ er) ->
+  fold juntar cc [] =~ Estrela er.
+Proof.
+  intros T er cc.
+  induction cc as [ | h t IH].
+  - intros _. simpl. apply MEstrela0.
+  - intros Hall. simpl. apply MEstrelaConcatenar.
+    + apply Hall. left. reflexivity.
+    + apply IH. intros c' Hin. apply Hall. right. apply Hin.
+Qed.
+
+(* Auxiliar 2: se a concatenação de cc é não-vazia, existe um elemento
+   NÃO-VAZIO x (pulando os vazios do início) tal que fold = x ++ resto,
+   com resto ainda casando com Estrela er. *)
+Lemma extrai_nao_vazio : forall T (er : exp_reg T) (cc : list (list T)),
+  (forall c', In c' cc -> c' =~ er) ->
+  fold juntar cc [] <> [] ->
+  exists x resto, fold juntar cc [] = x ++ resto /\
+                  x <> [] /\ x =~ er /\ resto =~ Estrela er.
+Proof.
+  intros T er cc.
+  induction cc as [ | h t IH].
+  - intros _ Hne. exfalso. apply Hne. reflexivity.
+  - intros Hall Hne.
+    destruct h as [ | a h'].
+    + (* h vazio: contribui nada, pula pra IH em t *)
+      simpl in Hne. simpl.
+      apply IH.
+      * intros c' Hin. apply Hall. right. apply Hin.
+      * apply Hne.
+    + (* h = a::h' <> []: é o pedaço bombeável *)
+      exists (a :: h'), (fold juntar t []).
+      simpl. split.
+      * reflexivity.
+      * split.
+        -- discriminate.
+        -- split.
+           ++ apply Hall. left. reflexivity.
+           ++ apply fold_estrela. intros c' Hin. apply Hall. right. apply Hin.
+Qed.
+
+Lemma bombeamento_fraco_estrela_concatenar : forall T (c1 c2 : list T) (er : exp_reg T),
+  c1 =~ er ->
+  c2 =~ Estrela er ->
+  (constante_de_bombeamento er <= length c1 ->
+    exists c2 c3 c4 : list T,
+      c1 = c2 ++ c3 ++ c4 /\ c3 <> [ ] /\
+      (forall m : nat, c2 ++ nconc m c3 ++ c4 =~ er)) ->
+  (constante_de_bombeamento (Estrela er) <= length c2 ->
+    exists c1 c3 c4 : list T,
+      c2 = c1 ++ c3 ++ c4 /\ c3 <> [ ] /\
+      (forall m : nat, c1 ++ nconc m c3 ++ c4 =~ Estrela er)) ->
+  constante_de_bombeamento (Estrela er) <= length (c1 ++ c2) ->
+  exists c0 c3 c4 : list T,
+    c1 ++ c2 = c0 ++ c3 ++ c4 /\ c3 <> [ ] /\
+    (forall m : nat, c0 ++ nconc m c3 ++ c4 =~ Estrela er).
+Proof.
+  simpl. intros T c1 c2 er Hmatch1 Hmatch2 IH1 IH2 Hlen.
+  rewrite juntar_tamanho in *.
+  assert (Hc1er1 : length c1 = 0
+                \/ (length c1 <> 0 /\ length c1 < constante_de_bombeamento er)
+                \/ constante_de_bombeamento er <= length c1).
+  { destruct c1 as [ | h c1'].
+    - left. reflexivity.
+    - right. destruct (lt_ge_casos (length (h :: c1')) (constante_de_bombeamento er)) as [Hlt | Hge].
+      + left. split.
+        * discriminate.
+        * apply Hlt.
+      + right. unfold ge in Hge. apply Hge.
+  }
+  destruct Hc1er1 as [Heq | [Hineq | Hbomb]].
+
+  - (* CASO 1: c1 vazia — usa IH2 direto *)
+    rewrite Heq in Hlen. simpl in Hlen.
+    destruct (IH2 Hlen) as [c1' [c3' [c4' [Heq2 [Hne Hall]]]]].
+    assert (Hc1nil : c1 = []).
+    { destruct c1 as [ | h t].
+      - reflexivity.
+      - discriminate Heq. }
+    rewrite Hc1nil. simpl.
+    exists c1', c3', c4'.
+    split. { apply Heq2. }
+    split. { apply Hne. }
+    apply Hall.
+
+  - (* CASO 2: c1 não-vazia mas curta — o caso difícil *)
+    destruct Hineq as [H0 Her].
+    (* Passo 1: mostra que c2 não pode ser vazia, ''cancelando'' c1 da soma *)
+    assert (Hstep : length c1 + 1 <= length c1 + length c2).
+    { rewrite add_comutativo.
+      apply (le_trans _ (constante_de_bombeamento er)).
+      - apply Her.
+      - apply Hlen. }
+    apply cancela_soma_esquerda in Hstep.
+    assert (Hc2ne : c2 <> []).
+    { intros Hc2eq. rewrite Hc2eq in Hstep. simpl in Hstep. inversion Hstep. }
+    (* Passo 2: decompõe c2 em blocos via MEstrela'' *)
+    destruct (MEstrela'' T c2 er Hmatch2) as [cc [Hccfold Hccall]].
+    rewrite Hccfold in Hc2ne.
+    (* Passo 3: acha o primeiro bloco não-vazio dentro de cc *)
+    destruct (extrai_nao_vazio T er cc Hccall Hc2ne)
+      as [x [resto [Hxeq [Hxne [Hxer Hrestoer]]]]].
+    exists c1, x, resto.
+    split. { rewrite Hccfold. rewrite Hxeq. reflexivity. }
+    split. { apply Hxne. }
+    intros m.
+    assert (Hxm : nconc m x ++ resto =~ Estrela er).
+    { induction m as [ | m' IHm].
+      - simpl. apply Hrestoer.
+      - simpl. 
+        (* Reassocia para separar o 'x' do restante *)
+        rewrite <- app_assoc.
+        apply MEstrelaConcatenar.
+        + apply Hxer.
+        + apply IHm. }
+    apply MEstrelaConcatenar.
+    + apply Hmatch1.
+    + apply Hxm.
+
+  - (* CASO 3: c1 longa o bastante — igual ao caso Concatenar, mas MEstrelaConcatenar no final *)
+    destruct (IH1 Hbomb) as [c2' [c3' [c4' [Heq [Hne Hall]]]]].
+    exists c2', c3', (c4' ++ c2).
+    split.
+    { rewrite Heq. rewrite app_assoc. rewrite app_assoc. rewrite <- app_assoc.
+      reflexivity. }
+    split. { apply Hne. }
+    intros m.
+    assert (Heq2 : c2' ++ nconc m c3' ++ c4' ++ c2
+                  = (c2' ++ nconc m c3' ++ c4') ++ c2).
+    { rewrite app_assoc. rewrite app_assoc. rewrite app_assoc. reflexivity. }
+    rewrite Heq2.
+    apply MEstrelaConcatenar.
+    + apply Hall.
+    + apply Hmatch2.
+Qed.
+
+Lemma bombeamento_fraco : forall T (er : exp_reg T) c,
+  c =~ er ->
+  constante_de_bombeamento er <= length c ->
+  exists c1 c2 c3,
+    c = c1 ++ c2 ++ c3 /\
+    c2 <> [] /\
+    forall m, c1 ++ nconc m c2 ++ c3 =~ er.
+Proof.
+  intros T er c Hmatch.
+  induction Hmatch
+    as [ | x | c1 er1 c2 er2 Hmatch1 IH1 Hmatch2 IH2
+       | c1 er1 er2 Hmatch IH | c2 er1 er2 Hmatch IH
+       | er | c1 c2 er Hmatch1 IH1 Hmatch2 IH2 ].
+  - (* MVazio *)
+    simpl. intros contra. inversion contra.
+  - apply bombeamento_fraco_char.
+  - apply bombeamento_fraco_concatenar; assumption.
+  - apply bombeamento_fraco_uniao_esquerda; assumption.
+  - apply bombeamento_fraco_uniao_direita; assumption.
+  - apply bombeamento_fraco_estrela_zero.
+  - apply bombeamento_fraco_estrela_concatenar; assumption.
+Qed.
+
+(*** O Lema do Bombeamento (Forte) ***)
+
+(* Agora, eis a versão usual do lema do bombeamento. Além de exigir que c2 ≠ [], 
+ela também reforça o resultado ao incluir a reivindicação de que o comprimento de 
+c1 mais o comprimento de c2 é menor ou igual à constante de bombeamento 
+(length c1 + length c2 ≤ constante_de_bombeamento er. ). *)
+
+Lemma bombeamento : forall T (er : exp_reg T) c,
+  c =~ er ->
+  constante_de_bombeamento er <= length c ->
+  exists c1 c2 c3,
+    c = c1 ++ c2 ++ c3 /\
+    c2 <> [] /\
+    length c1 + length c2 <= constante_de_bombeamento er /\
+    forall m, c1 ++ nconc m c2 ++ c3 =~ er.
+
+(* Você talvez queira copiar sua prova de bombeamento_fraco abaixo. *)
+
+Proof.
+  intros T er c Hmatch.
+  induction Hmatch
+    as [ | x | c1 er1 c2 er2 Hmatch1 IH1 Hmatch2 IH2
+       | c1 er1 er2 Hmatch IH | c2 er1 er2 Hmatch IH
+       | er | c1 c2 er Hmatch1 IH1 Hmatch2 IH2 ].
+  - (* MVazio *)
+    simpl. intros contra. inversion contra.
+  (* FILL IN HERE *) Admitted.
+End Bombeamento.
+
+(********************** Estudo de Caso: Aprimorando a Reflexão ********************)
+
+(* Vimos no capítulo de Lógica que às vezes precisamos relacionar computações 
+booleanas a declarações em $\text{Prop}$. No entanto, realizar essa conversão como 
+fizemos lá pode resultar em scripts de prova tediosos. Considere a prova do seguinte 
+teorema:*)
