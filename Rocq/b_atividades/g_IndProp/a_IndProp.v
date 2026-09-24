@@ -2662,6 +2662,158 @@ End Bombeamento.
 (********************** Estudo de Caso: Aprimorando a Reflexão ********************)
 
 (* Vimos no capítulo de Lógica que às vezes precisamos relacionar computações 
-booleanas a declarações em $\text{Prop}$. No entanto, realizar essa conversão como 
+booleanas a declarações em Prop. No entanto, realizar essa conversão como 
 fizemos lá pode resultar em scripts de prova tediosos. Considere a prova do seguinte 
 teorema:*)
+ 
+Theorem filter_nao_vazio_In : forall n l,
+  filter (fun x => n =? x) l <> [] -> In n l.
+Proof.
+  intros n l. induction l as [|m l' IHl'].
+  - (* l = nil *)
+    simpl. intros H. apply H. reflexivity.
+  - (* l = m :: l' *)
+    simpl. destruct (n =? m) eqn:H.
+    + (* n =? m = true *)
+      intros _. rewrite eqb_eq in H.
+      rewrite H. left. reflexivity.
+    + (* n =? m = false *)
+      intros H'. right. apply IHl'. apply H'.
+Qed.
+
+(* Na primeira ramificação após o destruct, aplicamos explicitamente o lema eqb_eq à 
+equação gerada ao aplicar destruct em n =? m, para converter a hipótese n =? m = true 
+na hipótese n = m; somente então podemos reescrever usando essa hipótese para completar 
+o caso.
+
+Podemos otimizar esse tipo de raciocínio definindo uma proposição indutiva que produza 
+um princípio de análise de casos melhor para n =? m. Em vez de gerar a hipótese 
+(n =? m) = true, que geralmente exige algum ajuste antes de podermos usá-la, este 
+princípio nos dá imediatamente a hipótese de que realmente precisamos: n = m.
+
+Seguindo a terminologia introduzida em Lógica, chamamos isso de ''princípio de reflexão 
+para a igualdade em números'' (reflection principle for equality on numbers), e dizemos
+que o booleano n =? m está refletido na proposição n = m.*)
+
+Inductive reflect (P : Prop) : bool -> Prop :=
+  | ReflectT (H : P) : reflect P true
+  | ReflectF (H : ~ P) : reflect P false.
+
+(* A propriedade reflect recebe dois argumentos: uma proposição P e um booleano b. Ela 
+afirma que a propriedade P reflete (intuitivamente, é equivalente a) o booleano b: 
+isto é, P é válida se, e somente se, b = true.
+
+Para ver isso, note que, por definição, a única maneira de produzirmos uma evidência 
+para reflect P true é mostrando P e, em seguida, usando o construtor ReflectT. Se 
+invertermos essa afirmação, isso significa que podemos extrair uma evidência para P a 
+partir de uma prova de reflect P true.
+
+Da mesma forma, a única maneira de mostrar reflect P false é rotulando uma evidência 
+para ¬ P com o construtor ReflectF.
+
+Para colocar essas observações em prática, primeiro provamos que as afirmações 
+P ↔ b = true e reflect P b são de fato equivalentes. Primeiro, a implicação da 
+esquerda para a direita: *)
+
+Theorem sse_reflect : forall P b, (P <-> b = true) -> reflect P b.
+Proof.
+  (* TRABALHADO EM AULA *)
+  intros P b H. destruct b eqn:Eb.
+  - apply ReflectT. rewrite H. reflexivity.
+  - apply ReflectF. unfold negacao. rewrite H. intros H'. discriminate.
+Qed.
+
+(* Agora prove a implicação da direita para a esquerda: *)
+
+(* Exercício *)
+Theorem reflect_sse : forall P b, reflect P b -> (P <-> b = true).
+Proof.
+  intros P b H. inversion H.
+  - split.
+    + intros Hp. reflexivity.
+    + intros Heq. apply H0.
+  - split.
+    + intros Hp. unfold negacao in H0. apply H0 in Hp. inversion Hp.
+    + intros Heq. discriminate Heq. 
+  Qed.
+
+(* Portanto, podemos pensar em reflect como uma variante do conectivo usual ''se e 
+somente se''. A vantagem do reflect é que, ao aplicar destruct em uma hipótese ou lema 
+da forma reflect P b, podemos realizar uma análise de casos em b gerando, ao mesmo 
+tempo, hipóteses apropriadas nos dois ramos (P na primeira submeta e ¬ P na segunda).
+Vamos usar o reflect para produzir uma prova mais fluida de filter_nao_vazio_In.
+
+Começamos reescrevendo o lema eqb_eq em termos de reflect: *) 
+
+Lemma eqb_spec : forall n m, reflect (n = m) (n =? m).
+Proof.
+  intros n m. apply sse_reflect. rewrite eqb_eq. reflexivity.
+Qed.
+
+(* A prova de filter_nao_vazio_In agora é a seguinte. Note como as chamadas para 
+destruct e rewrite na prova anterior deste teorema são combinadas aqui em uma única 
+chamada para destruct.
+
+(Para ver isso claramente, execute as duas provas de filter_nao_vazio_In com o Rocq e 
+observe as diferenças no estado da prova no início do primeiro caso do destruct.) *)
+
+Theorem filter_nao_vazio_In' : forall n l,
+  filter (fun x => n =? x) l <> [] ->
+  In n l.
+Proof.
+  intros n l. induction l as [|m l' IHl'].
+  - (* l =  *)
+    simpl. intros H. apply H. reflexivity.
+  - (* l = m :: l' *)
+    simpl. destruct (eqb_spec n m) as [EQnm | NEQnm].
+    + (* n = m *)
+      intros _. rewrite EQnm. left. reflexivity.
+    + (* n <> m *)
+      intros H'. right. apply IHl'. apply H'.
+Qed.
+  
+(* Exercício *)
+(* Use eqb_spec como acima para provar o seguinte: *)
+
+Fixpoint count n l :=
+  match l with
+  | [] => 0
+  | m :: l' => (if n =? m then 1 else 0) + count n l'
+  end.
+
+Theorem eqb_spec_pratica : forall n l,
+  count n l = 0 -> ~(In n l).
+Proof.
+  intros n l Hcount. induction l as [| m l' IHl'].
+  - simpl. intros Hf. apply Hf.
+  - destruct (eqb_spec n m).
+   (* Subcaso 1: n = m (refletido por ReflectT) *)
+    + unfold negacao. intros H_in. 
+      simpl in Hcount. rewrite <- H in Hcount. rewrite eqb_refl in Hcount. 
+      discriminate Hcount.
+    (* Subcaso 2: n <> m (refletido por ReflectF) *)
+    + unfold negacao. intros H_in. destruct H_in as [Hmn | Hinnl'].
+    (* Se n = m, contradição com H *)
+      * unfold negacao in H. apply H. symmetry. apply Hmn.
+    (* Se n está em l', usamos a IH *)
+      * apply IHl'.
+        -- simpl in Hcount. destruct (n =? m) eqn:Heq.
+          ++ exfalso. apply H. apply eqb_eq. apply Heq.
+          ++ apply Hcount.
+        -- apply Hinnl'.
+        Qed.
+
+(* Este pequeno exemplo mostra a reflexão nos proporcionando um pequeno ganho em 
+conveniência; em desenvolvimentos maiores, usar a reflexão de forma consistente pode 
+frequentemente levar a scripts de prova visivelmente mais curtos e claros. Veremos 
+muitos outros exemplos em capítulos posteriores e em Programming Language Foundations.
+
+Essa forma de usar a reflexão foi popularizada pelo SSReflect, uma biblioteca do Rocq 
+que tem sido usada para formalizar resultados importantes em matemática, incluindo o 
+teorema das quatro cores e o teorema de Feit-Thompson. O nome SSReflect significa 
+small-scale reflection (reflexão em pequena escala), ou seja, o uso generalizado da 
+reflexão para otimizar pequenos passos de prova, transformando-os em computações 
+booleanas. *)
+
+(******************************* Exercícios Adicionais *******************************)
+      
