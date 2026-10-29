@@ -1342,3 +1342,370 @@ Fixpoint ceval_fun_no_while (st : estado) (c : com) : estado :=
     | <{ while b do c end }> =>
         st (* falso *)
   end.
+
+(* Em uma linguagem de programação funcional mais convencional como OCaml ou Haskell, 
+poderíamos adicionar o caso while da seguinte forma: 
+
+      Fixpoint ceval_fun (st : state) (c : com) : state :=
+          match c with
+            ...
+            | <{ while b do c end}> =>
+                if (beval st b)
+                  then ceval_fun st <{c ; while b do c end}>
+                  else st
+          end.
+
+O Rocq não aceita tal definição (''Error: Cannot guess decreasing argument of fix'') 
+porque a função que queremos definir não tem garantia de terminação. De fato, ela nem 
+sempre termina: por exemplo, a versão completa da função ceval_fun aplicada ao programa 
+de loop acima nunca terminaria. Como o Rocq visa ser não apenas uma linguagem de 
+programação funcional, mas também uma lógica consistente, qualquer função potencialmente 
+não terminante precisa ser rejeitada.
+
+Aqui está um exemplo mostrando o que daria errado se o Rocq permitisse funções 
+recursivas não terminantes:
+
+        Fixpoint loop_false (n : nat) : False := loop_false n.
+
+Isto é, proposições como False se tornariam prováveis (loop_false 0 seria uma prova de False), 
+o que seria um desastre para a consistência lógica do Rocq.
+
+Portanto, como ela não termina em todas as entradas, ceval_fun não pode ser escrita no 
+Rocq — pelo menos não sem truques adicionais e soluções alternativas (consulte o 
+capítulo ImpCEvalFun se você tiver curiosidade sobre eles). *)
+
+(*** Avaliação como uma Relação ***)
+
+(* Aqui está uma maneira melhor: defina ceval como uma relação em vez de uma função — ou 
+seja, torne seu resultado um Prop em vez de um estado, semelhante ao que fizemos com 
+aevalR acima.
+
+Isto é uma mudança importante. Além de nos livrar de contornamentos trabalhosos, isso 
+nos dá muito mais flexibilidade na definição. Por exemplo, se adicionarmos recursos 
+não-determinísticos como any à linguagem, queremos que a definição de avaliação também 
+seja não-determinística — ou seja, ela não será apenas total (total), nem mesmo uma 
+função!
+
+Vamos usar a notação st =[ c ]=> st' para a relação ceval: st =[ c ]=> st' significa 
+que executar o programa c em um estado inicial st resulta em um estado final st'. Isto 
+pode ser pronunciado como ''c leva o estado st até st' '' *)
+
+(** Semântica Operacional **)
+
+(* Aqui está uma definição informal de avaliação, apresentada como regras de inferência 
+para legibilidade: 
+
+              	     --------------------- (E_Skip)  
+                       st =[ skip ]=> st	
+
+
+                         aeval st a = n
+                 -------------------------------- (E_Asgn)  
+                  st =[ x := a ]=> (x !-> n ; st)	
+
+                        st =[ c1 ]=> st'	
+                       st' =[ c2 ]=> st''	
+                  ------------------------(E_Seq)  
+                    st =[ c1;c2 ]=> st''	
+
+                         beval st b = true	
+                          st =[ c1 ]=> st'	
+                -------------------------------------- (E_IfTrue)  
+                st =[ if b then c1 else c2 end ]=> st'	
+
+                           beval st b = false	
+                            st =[ c2 ]=> st'	
+                    --------------------------------------- (E_IfFalse)   
+                    st =[ if b then c1 else c2 end ]=> st'	
+
+                          beval st b = false	
+                   ------------------------------- (E_WhileFalse)  
+                    st =[ while b do c end ]=> st	
+
+                            beval st b = true	
+                            st =[ c ]=> st'	
+                    st' =[ while b do c end ]=> st''	
+                  ----------------------------------- (E_WhileTrue)  
+                    st =[ while b do c end ]=> st''	
+
+
+Aqui está a definição formal. Certifique-se de entender como ela se corresponde com as 
+regras de inferência. *)
+
+Reserved Notation "st '=[' c ']=>' st' " 
+  (at level 40, c custom com at level 99, st' constr at next level).
+
+Inductive ceval : com -> estado -> estado -> Prop :=
+  | E_Skip : forall st,
+      st =[ skip ]=> st
+  | E_Asgn : forall st a n x,
+      aeval st a = n ->
+      st =[ x := a ]=> (x !-> n ; st)
+  | E_Seq : forall c1 c2 st st' st'',
+      st =[ c1 ]=> st' ->
+      st' =[ c2 ]=> st'' ->
+      st =[ c1 ; c2 ]=> st''
+  | E_IfTrue : forall st st' b c1 c2,
+      beval st b = true ->
+      st =[ c1 ]=> st' ->
+      st =[ if b then c1 else c2 end]=> st'
+  | E_IfFalse : forall st st' b c1 c2,
+      beval st b = false ->
+      st =[ c2 ]=> st' ->
+      st =[ if b then c1 else c2 end]=> st'
+  | E_WhileFalse : forall b st c,
+      beval st b = false ->
+      st =[ while b do c end ]=> st
+  | E_WhileTrue : forall st st' st'' b c,
+      beval st b = true ->
+      st =[ c ]=> st' ->
+      st' =[ while b do c end ]=> st'' ->
+      st =[ while b do c end ]=> st''
+
+where "st0 =[ c ]=> st1" := (ceval c st0 st1).
+
+(* O custo de definir a avaliação como uma relação em vez de uma função é que agora 
+precisamos construir uma prova de que um programa é avaliado para um determinado estado 
+de resultado, em vez de simplesmente deixar o mecanismo de computação do Rocq fazer 
+isso por nós.*)
+
+Example ceval_example1:
+  empty_st =[
+     X := 2;
+     if (X <= 1)
+       then Y := 3
+       else Z := 4
+     end
+  ]=> (Z !-> 4 ; X !-> 2).
+Proof.
+  (* Devemos fornecer o estado intermediário. *)
+  apply E_Seq with (X !-> 2).
+  - (* Comando de atribuição *)
+    apply E_Asgn. reflexivity.
+  - (* Comando if *)
+    apply E_IfFalse.
+    + reflexivity.
+    + apply E_Asgn. reflexivity.
+Qed.
+
+(* Exercício *)
+
+Example ceval_example2:
+  empty_st =[
+    X := 0;
+    Y := 1;
+    Z := 2
+  ]=> (Z !-> 2 ; Y !-> 1 ; X !-> 0).
+Proof.  
+  apply E_Seq with (X !-> 0).
+  - apply E_Asgn. reflexivity.
+  - apply E_Seq with (Y !-> 1; X !-> 0).
+    + apply E_Asgn. reflexivity.
+    + apply E_Asgn. reflexivity.
+Qed.
+
+Set Printing Implicit.
+Check @ceval_example2.
+
+(* Escreva um programa Imp que soma os números de 1 até X (inclusive: 1 + 2 + ... + X) na variável Y. Seu 
+programa deve atualizar o estado conforme mostrado no teorema pup_to_2_ceval, o qual você pode analisar 
+por engenharia reversa para descobrir o programa que deve escrever. A prova desse teorema será um tanto 
+extensa. *)
+
+Definition pup_to_n : com :=
+  <{ Y := 0;
+     while (X > 0) do
+     Y := X + Y;
+     X := X - 1 end
+  }>.
+
+Theorem pup_to_2_ceval :
+  (X !-> 2) =[
+    pup_to_n
+  ]=> (X !-> 0 ; Y !-> 3 ; X !-> 1 ; Y !-> 2 ; Y !-> 0 ; X !-> 2).
+Proof.
+  apply E_Seq with (Y !-> 0; X !-> 2).
+  - apply E_Asgn. reflexivity.
+  - apply E_WhileTrue with (st' := (X !-> 1 ; Y !-> 2 ; Y !-> 0 ; X !-> 2)).
+    + reflexivity.
+    + apply E_Seq with (Y !-> 2; Y !-> 0; X !-> 2).
+      * apply E_Asgn. reflexivity.
+      * apply E_Asgn. reflexivity.
+    + apply E_WhileTrue with (st' := (X !-> 0 ; Y !-> 3 ; X !-> 1 ; Y !-> 2 ; Y !-> 0 ; X !-> 2)).
+      * reflexivity.
+      * apply E_Seq with (Y !-> 3; X !-> 1; Y !-> 2; Y !-> 0; X !-> 2).
+        -- apply E_Asgn. reflexivity.
+        -- apply E_Asgn. reflexivity.
+      * apply E_WhileFalse. reflexivity.
+Qed.
+
+(*** Determinismo da Avaliação ***)
+
+(* Mudar de uma definição computacional para uma relacional de avaliação é uma boa escolha porque nos 
+liberta da exigência artificial de que a avaliação deva ser uma função total. Mas isso também levanta uma 
+questão: a segunda definição de avaliação é realmente uma função parcial? Ou é possível que, partindo do 
+mesmo estado st, possamos avaliar algum comando c de diferentes maneiras para alcançar dois estados de 
+saída diferentes st1 e st2?
+
+De fato, isso não pode acontecer: ceval é uma função parcial: *)
+
+Theorem ceval_deterministic: forall c st st1 st2,
+     st =[ c ]=> st1 ->
+     st =[ c ]=> st2 ->
+     st1 = st2.
+Proof.
+  intros c st st1 st2 E1 E2.
+  generalize dependent st2.
+  induction E1; intros st2 E2; inversion E2; subst.
+  - (* E_Skip *) reflexivity.
+  - (* E_Asgn *) reflexivity.
+  - (* E_Seq *)
+    rewrite (IHE1_1 st'0 H1) in *.
+    apply IHE1_2. assumption.
+  - (* E_IfTrue, b avalia para true *)
+      apply IHE1. assumption.
+  - (* E_IfTrue,  b avalia para false (contradição) *)
+      rewrite H in H5. discriminate.
+  - (* E_IfFalse, b avalia para true (contradição) *)
+      rewrite H in H5. discriminate.
+  - (* E_IfFalse, b avalia para false *)
+      apply IHE1. assumption.
+  - (* E_WhileFalse, b avalia para false *)
+    reflexivity.
+  - (* E_WhileFalse, b avalia para true (contradição) *)
+    rewrite H in H2. discriminate.
+  - (* E_WhileTrue, b avalia para false (contradição) *)
+    rewrite H in H4. discriminate.
+  - (* E_WhileTrue, b avalia para true *)
+    rewrite (IHE1_1 st'0 H3) in *.
+    apply IHE1_2. assumption. Qed.
+
+(*** Raciocínio sobre Programas Imp ***)
+
+(* Entraremos em técnicas mais sistemáticas e poderosas para raciocinar sobre programas Imp no livro 
+Programming Language Foundations, mas já podemos fazer algumas coisas (ainda que de uma maneira um pouco 
+de baixo nível) apenas trabalhando com as definições básicas. Esta seção explora alguns exemplos. *)
+
+Theorem plus2_spec : forall st n st',
+  st X = n ->
+  st =[ plus2 ]=> st' ->
+  st' X = n + 2.
+Proof.
+  intros st n st' HX Heval.
+
+(* Inverter Heval essencialmente força o Rocq a expandir um passo da computação ceval — neste caso, 
+revelando que st' deve ser o estado st estendido com o novo valor de X, já que plus2 é uma atribuição. *)
+   inversion Heval. subst. clear Heval. simpl.
+   apply t_atualiza_eq. Qed.
+
+(* Exercício *)
+
+(* Formule e prove uma especificação para XtimesYinZ. *)
+Theorem XtimesYinZ_spec : forall st x y st',
+   st X = x -> st Y = y ->
+   st =[ XtimesYinZ ]=> st' ->
+   st' Z = x * y.
+Proof.
+  intros st x y st' HX HY Heval.
+  inversion Heval. subst. clear Heval.
+  simpl. apply t_atualiza_eq.
+Qed.
+  
+Theorem loop_never_stops : forall st st',
+  ~(st =[ loop ]=> st').
+Proof.
+  intros st st' contra. unfold loop in contra.
+  remember <{ while true do skip end }> as loopdef
+           eqn:Heqloopdef.
+  (* Prossiga por indução sobre a derivação assumida que mostra que loopdef termina. A maioria dos casos é 
+     imediatamente contraditória e, portanto, pode ser resolvida em um passo com discriminate. *)
+  induction contra; try discriminate.
+  - (* E_WhileFalse *)
+    inversion Heqloopdef. rewrite H1 in H. discriminate H.
+  - (* E_WhileTrue *)
+    apply IHcontra2. apply Heqloopdef.
+Qed.  
+
+(* Considere a seguinte função: *)
+Fixpoint no_whiles (c : com) : bool :=
+  match c with
+  | <{ skip }> =>
+      true
+  | <{ _ := _ }> =>
+      true
+  | <{ c1 ; c2 }> =>
+      andb (no_whiles c1) (no_whiles c2)
+  | <{ if _ then ct else cf end }> =>
+      andb (no_whiles ct) (no_whiles cf)
+  | <{ while _ do _ end }> =>
+      false
+  end.
+
+(* Este predicado resulta em verdadeiro apenas para programas que não possuem loops while. Usando 
+Inductive, escreva uma propriedade no_whilesR tal que no_whilesR c seja provável exatamente quando c for 
+um programa sem loops while. Em seguida, prove sua equivalência com no_whiles. *)
+
+Inductive no_whilesR: com -> Prop :=
+  | n_skip : 
+      no_whilesR <{ skip }>
+  | n_asgn (x : string) (a : aexp) :
+      no_whilesR <{ x := a }>
+  | n_seq (c1 c2 : com) :   
+      no_whilesR c1 ->
+      no_whilesR c2 ->
+      no_whilesR <{ c1; c2}>
+  | n_if (b : bexp) (ct cf : com) :
+      no_whilesR ct ->
+      no_whilesR cf ->
+      no_whilesR <{ if b then ct else cf end }>.
+
+Theorem no_whiles_eqv:
+  forall c, no_whiles c = true <-> no_whilesR c.
+Proof.
+  split.
+  - (* -> *)
+    intros H.
+    induction c;
+    try constructor; try simpl in H;
+    try destruct (no_whiles c1) eqn: Hc1, (no_whiles c2) eqn: Hc2; 
+    try apply IHc1; try reflexivity;
+    try discriminate H; try apply IHc2; try reflexivity;
+    try discriminate. 
+
+  - (*  <- *)
+    induction c; intros H; try constructor;
+    try inversion H; try simpl; apply andb_true_iff;
+    split; try apply IHc1, H2; try apply IHc2, H3;
+    try apply IHc2, H4.
+Qed.
+
+(* Programas Imp que não envolvem loops while sempre terminam. Enuncie e prove um teorema 
+no_whiles_terminating que afirme isso. Use no_whiles ou no_whilesR, como preferir. *)
+
+Theorem no_whiles_terminating: forall (c : com) (st : estado), 
+       no_whiles c = true -> exists st', st =[ c ]=> st'.
+Proof.
+  intros c.
+  induction c; intros st H.
+  - (* skip *)
+     exists st. constructor.
+  - (* asgn *)
+    exists (t_atualiza st x (aeval st a)). constructor. reflexivity.
+  - (* seq *) 
+    simpl in H. apply andb_true_iff in H. destruct H as [Hnc1 Hnc2].
+    destruct (IHc1 st Hnc1) as [st' Hst'].
+    destruct (IHc2 st' Hnc2) as [st'' Hst''].
+    exists st''. apply E_Seq with st'; assumption.
+  - (* if *)
+    simpl in H. apply andb_true_iff in H. destruct H as [Hnc1 Hnc2].
+    destruct (beval st b) eqn:Hb.
+    + destruct (IHc1 st Hnc1) as [st' Hst'].
+      exists st'. apply E_IfTrue; assumption.
+    + destruct (IHc2 st Hnc2) as [st' Hst'].
+      exists st'. apply E_IfFalse; assumption.
+  - (* while *)
+    simpl in H. discriminate H.
+Qed.
+
+(********************************** Exercícios Adicionais *******************************)
+  
