@@ -1708,4 +1708,552 @@ Proof.
 Qed.
 
 (********************************** Exercícios Adicionais *******************************)
+
+(* Antigas calculadoras HP, linguagens de programação como Forth e Postscript, e máquinas 
+virtuais abstratas como a Java Virtual Machine avaliam expressões aritméticas usando uma 
+pilha. Por exemplo, a expressão 
+  (2*3)+(3*(4-2)) 
+seria escrita como 
+  2 3 * 3 4 2 - * + 
+e avaliada desta forma (onde mostramos o programa sendo avaliado à direita e o conteúdo da 
+pilha à esquerda):
+
+      [ ]           |    2 3 * 3 4 2 - * +
+      [2]           |    3 * 3 4 2 - * +
+      [3, 2]        |    * 3 4 2 - * +
+      [6]           |    3 4 2 - * +
+      [3, 6]        |    4 2 - * +
+      [4, 3, 6]     |    2 - * +
+      [2, 4, 3, 6]  |    - * +
+      [2, 3, 6]     |    * +
+      [6, 6]        |    +
+      [12]          |
+      
+   
+O objetivo deste exercício é escrever um pequeno compilador que traduz aexps (expressões 
+aritméticas) para instruções de máquina de pilha. O conjunto de instruções para a nossa 
+linguagem de pilha consistirá nas seguintes instruções:
+
+  - SPush n: Empilha o número n na pilha.
+
+  - SLoad x: Carrega o identificador x do armazenamento (store) e o empilha na pilha.
+
+  - SPlus: Desempilha (pop) os dois números do topo da pilha, soma-os e empilha o 
+    resultado na pilha.
+
+  - SMinus: Similar, mas subtrai o primeiro número do segundo.
+
+  - SMult: Similar, mas multiplica. 
+*)
   
+Inductive sinstr : Type :=
+| SPush (n : nat)
+| SLoad (x : string)
+| SPlus
+| SMinus
+| SMult. 
+
+(* Escreva uma função para avaliar programas na linguagem de pilha. Ela deve receber como 
+entrada um estado, uma pilha representada como uma lista de números (sendo o item do topo 
+da pilha a cabeça da lista) e um programa representado como uma lista de instruções, e 
+deve retornar a pilha após a execução do programa. Teste sua função nos exemplos abaixo.
+
+Note que não é especificado o que fazer ao encontrar uma instrução SPlus, SMinus ou SMult 
+se a pilha contiver menos de dois elementos. Em certo sentido, é irrelevante o que 
+fazemos, já que um compilador correto nunca emitirá um programa malformado desse tipo. Mas, 
+por causa de exercícios futuros, o melhor é ignorar a instrução defeituosa e continuar 
+com a próxima.*)
+
+Fixpoint s_execute (st : estado) (stack : list nat)
+                   (prog : list sinstr)
+                 : list nat :=
+  match prog with
+  | [] => stack
+  | SPush n :: prog' => s_execute st (n :: stack) prog'
+  | SLoad x :: prog' => s_execute st (st x :: stack) prog'
+  | SPlus :: prog' =>
+      match stack with
+      | n :: m :: stk => s_execute st ((m + n) :: stk) prog'
+      | _ => s_execute st stack prog'   (* pilha curta: ignora e segue *)
+      end
+  | SMinus :: prog' =>
+      match stack with
+      | n :: m :: stk => s_execute st ((m - n) :: stk) prog'
+      | _ => s_execute st stack prog'
+      end
+  | SMult :: prog' =>
+      match stack with
+      | n :: m :: stk => s_execute st ((m * n) :: stk) prog'
+      | _ => s_execute st stack prog'
+      end
+  end.
+
+Check s_execute.
+
+Example s_execute1 :
+     s_execute empty_st []
+       [SPush 5; SPush 3; SPush 1; SMinus]
+   = [2; 5].
+Proof.
+  reflexivity.
+Qed.
+
+Example s_execute2 :
+     s_execute (X !-> 3) [3;4]
+       [SPush 4; SLoad X; SMult; SPlus]
+   = [15; 4].
+Proof.
+  reflexivity.
+Qed.
+
+(* A seguir, escreva uma função que compile uma aexp em um programa de máquina de pilha. O 
+efeito de executar o programa deve ser o mesmo que empilhar o valor da expressão na pilha. *)
+
+Fixpoint s_compile (e : aexp) : list sinstr :=
+  match e with
+  | ANum n => [SPush n]
+  | AId x => [SLoad x]
+  | APlus a1 a2 => (s_compile a1) ++ (s_compile a2) ++ [SPlus]
+  | AMinus a1 a2 => (s_compile a1) ++ (s_compile a2) ++ [SMinus]
+  | AMult a1 a2 => (s_compile a1) ++ (s_compile a2) ++ [SMult]
+  end.
+
+(* Depois de definir s_compile, prove o seguinte para testar se ele funciona. *)
+
+Example s_compile1 :
+  s_compile <{ X - (2 * Y) }>
+  = [SLoad X; SPush 2; SLoad Y; SMult; SMinus].
+Proof.
+  reflexivity.
+Qed.
+
+(* A execução pode ser decomposta no seguinte sentido: executar o programa de pilha 
+p1 ++ p2 é o mesmo que executar p1, pegar a pilha resultante e executar p2 a partir dela. 
+Prove esse fato. *)
+
+Theorem execute_app : forall st p1 p2 stack,
+  s_execute st stack (p1 ++ p2) = s_execute st (s_execute st stack p1) p2.
+Proof.
+  intros st p1 p2.
+  induction p1 as [ | i p1' IH]; intros stack.
+  - reflexivity.
+  - destruct i; simpl; try (destruct stack as [ | n [ | m stk]]); 
+    try reflexivity; apply IH.
+Qed.
+
+(* Agora vamos provar a corretude do compilador implementado no exercício anterior. 
+Comece provando o seguinte lema. Se ficar difícil, considere se a sua implementação de 
+s_execute ou s_compile poderia ser simplificada. *)
+
+Lemma s_compile_correct_aux : forall st e stack,
+  s_execute st stack (s_compile e) = aeval st e :: stack.
+Proof.  
+  intros st e.
+  induction e; intros stack; try simpl; try reflexivity. (* Resolve SPush e SLoad*)
+  - (* SPlus *)
+    rewrite (execute_app st (s_compile e1) ((s_compile e2) ++ [SPlus])).
+    rewrite IHe1. rewrite (execute_app st (s_compile e2) ([SPlus])). rewrite IHe2.
+    reflexivity.
+  - (* SMinus *)
+    rewrite (execute_app st (s_compile e1) ((s_compile e2) ++ [SMinus])).
+    rewrite IHe1. rewrite (execute_app st (s_compile e2) ([SMinus])). rewrite IHe2.
+    reflexivity.
+  - (* SMult *)
+    rewrite (execute_app st (s_compile e1) ((s_compile e2) ++ [SMult])).
+    rewrite IHe1. rewrite (execute_app st (s_compile e2) ([SMult])). rewrite IHe2.
+    reflexivity.
+Qed.
+
+(* O teorema principal deve ser um corolário muito fácil desse lema. *)
+
+Theorem s_compile_correct : forall (st : estado) (e : aexp),
+  s_execute st [] (s_compile e) = [ aeval st e ].
+Proof.
+  intros st e.
+  apply (s_compile_correct_aux st e []).
+Qed.
+
+(* A maioria das linguagens de programação modernas usa uma regra de avaliação de 
+''curto-circuito'' (short-circuit) para o and booleano: para avaliar BAnd b1 b2, avalie 
+primeiro b1. Se ele for avaliado como falso, então toda a expressão BAnd é avaliada como 
+falsa imediatamente, sem avaliar b2. 
+
+Caso contrário, b2 é avaliado para determinar o resultado da expressão BAnd. Escreva uma 
+versão alternativa de beval que realize a avaliação de curto-circuito de BAnd dessa 
+maneira, e prove que ela é equivalente a beval. (Obs.: Isso só é verdade porque a 
+avaliação de expressões em Imp é bastante simples. Em uma linguagem maior onde a 
+avaliação de uma expressão pode divergir, o BAnd com curto-circuito não seria 
+equivalente ao original, já que ele faria com que mais programas terminassem.) *)
+
+Fixpoint beval_sc (st : estado) (b : bexp) : bool :=
+  match b with
+  | BTrue => true
+  | BFalse => false
+  | BEq a1 a2 => (aeval st a1) =? (aeval st a2)
+  | BNeq a1 a2 => negb ((aeval st a1) =? (aeval st a2))
+  | BLe a1 a2 => (aeval st a1) <=? (aeval st a2)
+  | BGt a1 a2 => negb ((aeval st a1) <=? (aeval st a2))
+  | BNot b1 => negb (beval_sc st b1)
+  | BAnd b1 b2 => if beval_sc st b1 then beval_sc st b2  else false
+  end.
+
+Theorem beval_sc_equiv : forall st b,
+  beval_sc st b = beval st b.
+Proof.
+  intros st b.
+  induction b; reflexivity.
+Qed.
+
+
+Module BreakImp.
+
+(* Linguagens imperativas como C e Java frequentemente incluem um comando break ou 
+similar para interromper a execução de laços (loops). Neste exercício, consideramos 
+como adicionar o break ao Imp. Primeiro, precisamos enriquecer a linguagem de comandos 
+com um caso adicional. *)
+
+Inductive com : Type :=
+  | CSkip
+  | CBreak (* <--- NOVO *)
+  | CAsgn (x : string) (a : aexp)
+  | CSeq (c1 c2 : com)
+  | CIf (b : bexp) (c1 c2 : com)
+  | CWhile (b : bexp) (c : com).
+Notation "'break'" := CBreak (in custom com at level 0) : com_scope.
+Notation "'skip'" := CSkip
+  (in custom com at level 0) : com_scope.
+Notation "x := y" := (CAsgn x y)
+  (in custom com at level 0, x constr at level 0, y at level 85, no associativity,
+    format "x := y") : com_scope.
+Notation "x ; y" := (CSeq x y)
+  (in custom com at level 90,
+    right associativity,
+    format "'[v' x ; '/' y ']'") : com_scope.
+Notation "'if' x 'then' y 'else' z 'end'" := (CIf x y z)
+  (in custom com at level 89, x at level 99, y at level 99, z at level 99,
+    format "'[v' 'if' x 'then' '/ ' y '/' 'else' '/ ' z '/' 'end' ']'") : com_scope.
+Notation "'while' x 'do' y 'end'" := (CWhile x y)
+  (in custom com at level 89, x at level 99, y at level 99,
+    format "'[v' 'while' x 'do' '/ ' y '/' 'end' ']'") : com_scope.
+
+(* A seguir, precisamos definir o comportamento do break. Informalmente, sempre que o 
+break é executado em uma sequência de comandos, ele interrompe a execução dessa 
+sequência e sinaliza que o loop interno mais próximo deve terminar. (Se não houver 
+nenhum loop envolvente, o programa inteiro simplesmente termina.) O estado final deve 
+ser o mesmo daquele em que o comando break foi executado.
+
+Um ponto importante é o que fazer quando há múltiplos loops envolvendo um determinado 
+break. Nesses casos, o break deve terminar apenas o loop mais interno. Assim, após 
+executar o seguinte... 
+
+       X := 0;
+       Y := 1;
+       while 0 ≠ Y do
+         while true do
+           break
+         end;
+         X := 1;
+         Y := Y - 1
+       end
+
+... o valor de X deve ser 1, e não 0.
+
+Uma maneira de expressar esse comportamento é adicionar outro parâmetro à relação de 
+avaliação que especifica se a avaliação de um comando executa um comando break: *)
+
+Inductive result : Type :=
+  | SContinue
+  | SBreak.
+
+(* Intuitivamente, st =[ c ]=> st' / s significa que, se o comando c for iniciado no 
+estado st, ele termina no estado st' e sinaliza ou que o loop envolvente mais interno 
+(ou o programa inteiro) deve terminar imediatamente (s = SBreak) ou que a execução deve 
+continuar normalmente (s = SContinue). 
+
+A definição da relação ''st =[ c ]=> st' / s'' é muito semelhante à que fornecemos acima 
+para a relação de avaliação regular (st =[ c ]=> st') — só precisamos tratar 
+adequadamente os sinais de término:
+
+  - Se o comando for skip, o estado não muda e a execução de qualquer loop envolvente 
+    pode continuar normalmente.
+    
+  - Se o comando for break, o estado permanece inalterado, mas sinalizamos um SBreak.
+  
+  - Se o comando for uma atribuição, atualizamos a associação para essa variável no 
+    estado correspondente e sinalizamos que a execução pode continuar normalmente.
+    
+  - Se o comando for da forma if b then c1 else c2 end, o estado é atualizado como na 
+    semântica original do Imp, exceto pelo fato de também propagarmos o sinal gerado 
+    pela execução do ramo que foi tomado.
+    
+  - Se o comando for uma sequência c1 ; c2, primeiro executamos c1. Se isso resultar em 
+    um SBreak, pulamos a execução de c2 e propogamos o sinal SBreak para o contexto 
+    envolvente; o estado resultante é o mesmo obtido ao executar apenas c1. Caso 
+    contrário, executamos c2 no estado obtido após executar c1 e propagamos o sinal 
+    gerado lá.  
+    
+  - Finalmente, para um loop da forma while b do c end, a semântica é quase a mesma de 
+    antes. A única diferença é que, quando b é avaliado como verdadeiro, executamos c e 
+    verificamos o sinal que ele emite. Se esse sinal for SContinue, a execução prossegue 
+    como na semântica original. Caso contrário, interrompemos a execução do loop, e o 
+    estado resultante é o mesmo resultante da execução da iteração atual. Em ambos os 
+    casos, como o break termina apenas o loop mais interno, o while sinaliza SContinue.
+    
+Com base na descrição acima, complete a definição da relação ceval. *)
+Reserved Notation "st '=[' c ']=>' st' '/' s" 
+  (at level 40, c custom com at level 99, st' constr at next level).
+
+Inductive ceval : com -> estado -> result -> estado -> Prop :=
+  | E_Skip : forall st,
+      st =[ CSkip ]=> st / SContinue
+  | E_Break : forall st,
+      st =[ CBreak ]=> st / SBreak
+  | E_Asgn : forall st a n x,
+      aeval st a = n ->
+      st =[ x := a ]=> (x !-> n ; st) / SContinue
+  | E_IfTrue : forall st st' b c1 c2 s,
+      beval st b = true ->
+      st =[ c1 ]=> st' / s ->
+      st =[ if b then c1 else c2 end ]=> st' / s
+  | E_IfFalse : forall st st' b c1 c2 s,
+      beval st b = false ->
+      st =[ c2 ]=> st' / s ->
+      st =[ if b then c1 else c2 end]=> st' / s
+  | E_SeqBreak : forall c1 c2 st st',
+      st =[ c1 ]=> st' / SBreak ->
+      st =[ c1; c2]=> st' / SBreak
+  | E_SeqContinue: forall c1 c2 st st' st'' s,
+      st =[ c1 ]=> st' / SContinue ->
+      st' =[ c2 ]=> st'' / s ->
+      st =[ c1; c2 ]=> st'' / s
+  | E_WhileFalse : forall b st c,
+      beval st b = false ->
+      st =[ while b do c end ]=> st / SContinue
+  | E_WhileTrueBreak : forall st st' b c,
+      beval st b = true ->
+      st =[ c ]=> st' / SBreak ->
+      st =[ while b do c end ]=> st' / SContinue
+  | E_WhileTrueContinue : forall st st' st'' b c,
+      beval st b = true ->
+      st =[ c ]=> st' / SContinue  ->
+      st' =[ while b do c end ]=> st'' / SContinue ->
+      st =[ while b do c end ]=> st'' / SContinue
+
+where "st '=[' c ']=>' st' '/' s" := (ceval c st s st').
+
+(* Agora prove as seguintes propriedades da sua definição de ceval: *)
+
+Theorem break_ignore : forall c st st' s,
+     st =[ break; c ]=> st' / s ->
+     st = st'.
+Proof.
+  intros c st st' s H.
+  inversion H.
+  - (* break é executado -- estado não muda (st = st' )*)
+    inversion H5. reflexivity. 
+  - (* Absurdo! break emite SContinue *)
+    inversion H2.
+Qed.
+
+Theorem while_continue : forall b c st st' s,
+  st =[ while b do c end ]=> st' / s ->
+  s = SContinue.
+Proof.
+  intros b c st st' s H.
+  inversion H; reflexivity.
+Qed.
+
+Theorem while_stops_on_break : forall b c st st',
+  beval st b = true ->
+  st =[ c ]=> st' / SBreak ->
+  st =[ while b do c end ]=> st' / SContinue.
+Proof.
+  intros b c st st1 H1 H2.
+  apply E_WhileTrueBreak.
+  - apply H1.
+  - apply H2.
+Qed.
+
+Theorem seq_continue : forall c1 c2 st st' st'',
+  st =[ c1 ]=> st' / SContinue ->
+  st' =[ c2 ]=> st'' / SContinue ->
+  st =[ c1 ; c2 ]=> st'' / SContinue.
+Proof.
+  intros c1 c2 st st' st''.
+  apply E_SeqContinue.
+Qed.
+
+Theorem seq_stops_on_break : forall c1 c2 st st',
+  st =[ c1 ]=> st' / SBreak ->
+  st =[ c1 ; c2 ]=> st' / SBreak.
+Proof.
+  intros c1 c2 st st'.
+  apply E_SeqBreak.
+Qed.
+
+Theorem while_break_true : forall b c st st',
+  st =[ while b do c end ]=> st' / SContinue ->
+  beval st' b = true ->
+  exists st'', st'' =[ c ]=> st' / SBreak.
+Proof.
+  intros b c st st' H1 H2.
+  (* Fixa o comando para evitar subgoals desnecessários na indução *)
+  remember (CWhile b c) as cw eqn:Heq.
+  induction H1; inversion Heq; subst.
+  - (* Caso: WhileFalse (contradição entre condição falsa e H2) *)
+    rewrite H in H2. discriminate H2.
+  - (* Caso: WhileTrueBreak (o break ocorreu na 1ª iteração) *)
+    exists st. apply H1.
+  - (* Caso: WhileTrueContinue (iteração normal, continua o loop) *)
+    apply IHceval2.
+      + reflexivity.
+      + apply H2.
+Qed.
+
+Theorem ceval_deterministic: forall (c:com) st st1 st2 s1 s2,
+     st =[ c ]=> st1 / s1 ->
+     st =[ c ]=> st2 / s2 ->
+     st1 = st2 /\ s1 = s2.
+Proof.
+  intros c st st1 st2 s1 s2 H1.
+  generalize dependent st2.
+  generalize dependent s2.
+  induction H1; intros s2 st2 H2;
+    inversion H2; subst; try discriminate;
+    try (split; reflexivity).
+
+  - (* IfTrue *)
+    apply IHceval, H9.
+
+  - (* IfTrue vs IfFalse *)
+    rewrite H in H8; discriminate H8.
+
+  - (* IfFalse vs IfTrue *)
+    rewrite H in H8; discriminate H8.
+
+  - (* IfFalse *)
+    apply IHceval, H9.
+
+  - (* SeqBreak *)
+    apply IHceval in H6; destruct H6 as [Ha Hb]; subst; split; reflexivity.
+
+  - (* SeqContinue vs SeqBreak *)
+    apply IHceval in H3; destruct H3 as [_ Hcontra]; discriminate Hcontra.
+
+  - (* WhileTrueBreak vs WhileFalse *)
+    apply IHceval1 in H5; destruct H5 as [_ Hcontra]; discriminate Hcontra.
+
+  - (* WhileTrueContinue (parte 1) *)
+    apply IHceval1 in H1; destruct H1 as [Ha Hb]; subst; apply IHceval2, H6.
+
+  - (* WhileFalse vs WhileTrueBreak (conflito 1) *)
+    rewrite H in H3; discriminate H3.
+
+  - (* WhileFalse vs WhileTrueBreak (conflito 2) *)
+    rewrite H in H3; discriminate H3.
+
+  - (* WhileFalse vs WhileTrueContinue *)
+    rewrite H in H7; discriminate H7.
+
+  - (* WhileFalse *)
+    apply IHceval in H8; destruct H8 as [Ha Hb]; subst; split; reflexivity.
+
+  - (* WhileFalse vs WhileTrueBreak (conflito 3) *)
+    apply IHceval in H5; destruct H5 as [_ Hcontra]; discriminate Hcontra.
+
+  - (* WhileTrueContinue vs WhileFalse *)
+    rewrite H in H6; discriminate H6.
+
+  - (* WhileTrueBreak vs WhileFalse (conflito 2) *)
+    apply IHceval1 in H7; destruct H7 as [_ Hcontra]; discriminate Hcontra.
+
+  - (* WhileTrueContinue (parte 2) *)
+    apply IHceval1 in H4; destruct H4 as [Ha _]; subst; apply IHceval2, H8.
+Qed.
+
+End BreakImp.
+
+(* dicione laços for no estilo C à linguagem de comandos, atualize a definição de ceval para definir a semântica dos laços for, e adicione os casos para os laços for conforme necessário para que todas as provas neste arquivo sejam aceitas pelo Rocq.
+
+Um laço for deve ser parametrizado por:
+
+(a) um comando executado inicialmente,
+
+(b) um teste executado a cada iteração do laço para determinar se ele deve continuar,
+
+(c) um comando executado ao final de cada iteração do laço, e
+
+(d) um comando que constitui o corpo do laço.
+
+(Você não precisa se preocupar em criar uma Notation concreta para os laços for, mas sinta-se à vontade para brincar com isso também, se quiser.) *)
+
+Module For.
+
+Inductive com : Type :=
+  | CSkip
+  | CAsgn (x : string) (a : aexp)
+  | CSeq (c1 c2 : com)
+  | CIf (b : bexp) (c1 c2 : com)
+  | CWhile (b : bexp) (c : com)
+  | CFor (init : com) (test : bexp) (update : com) (body : com).
+
+(* Sem Declare Custom Entry: ela já existe no arquivo.
+   Só redeclaramos as notações que apontam para o com novo. *)
+
+Notation "'skip'" := CSkip
+  (in custom com at level 0).
+
+Notation "x := y" := (CAsgn x y)
+  (in custom com at level 0, x constr at level 0,
+   y at level 85, no associativity).
+
+Notation "x ; y" := (CSeq x y)
+  (in custom com at level 90, right associativity).
+
+Notation "'if' x 'then' y 'else' z 'end'" := (CIf x y z)
+  (in custom com at level 89, x at level 99, y at level 99, z at level 99).
+
+Notation "'while' x 'do' y 'end'" := (CWhile x y)
+  (in custom com at level 89, x at level 99, y at level 99).
+
+(* vírgulas, e não ponto e vírgula: o ; já é a notação de sequência *)
+Notation "'for' '(' i ',' t ',' u ')' 'do' b 'end'" := (CFor i t u b)
+  (in custom com at level 89,
+   i at level 99, t at level 99, u at level 99, b at level 99).
+
+Reserved Notation "st '=[' c ']=>' st'"
+  (at level 40, c custom com at level 99, st' constr at next level).
+
+Inductive ceval : com -> estado -> estado -> Prop :=
+  | E_Skip : forall st,
+      st =[ skip ]=> st
+  | E_Asgn : forall st a n x,
+      aeval st a = n ->
+      st =[ x := a ]=> (x !-> n ; st)
+  | E_Seq : forall c1 c2 st st' st'',
+      st =[ c1 ]=> st' ->
+      st' =[ c2 ]=> st'' ->
+      st =[ c1 ; c2 ]=> st''
+  | E_IfTrue : forall st st' b c1 c2,
+      beval st b = true ->
+      st =[ c1 ]=> st' ->
+      st =[ if b then c1 else c2 end ]=> st'
+  | E_IfFalse : forall st st' b c1 c2,
+      beval st b = false ->
+      st =[ c2 ]=> st' ->
+      st =[ if b then c1 else c2 end ]=> st'
+  | E_WhileFalse : forall b st c,
+      beval st b = false ->
+      st =[ while b do c end ]=> st
+  | E_WhileTrue : forall st st' st'' b c,
+      beval st b = true ->
+      st =[ c ]=> st' ->
+      st' =[ while b do c end ]=> st'' ->
+      st =[ while b do c end ]=> st''
+  | E_For : forall init test update body st st',
+      st =[ init ; while test do (body ; update) end ]=> st' ->
+      st =[ for (init, test, update) do body end ]=> st'
+
+where "st '=[' c ']=>' st'" := (ceval c st st').
+
+End For.
